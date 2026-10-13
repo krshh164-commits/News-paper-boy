@@ -1,0 +1,33 @@
+:root { color: #171717; background: #181818; font-family: Inter, ui-rounded, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+body { touch-action: none; background: radial-gradient(circle at 50% 30%, #3a3a3a, #111); }
+#app { display: grid; place-items: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.game-shell { position: relative; aspect-ratio: 9 / 16; width: min(100%, 56.25dvh); max-height: 100%; overflow: hidden; background: #f7f5ef; box-shadow: 0 20px 80px #0009; user-select: none; }
+#game-canvas, #game-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
+.rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 5%; width: 16.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
+.rider-svg { display: block; width: 100%; height: auto; transition: transform 180ms cubic-bezier(.23,1,.32,1), filter 180ms ease; transform-origin: 50% 80%; }
+.rider-layer.throw-left { transform: translateX(-50%) rotate(-7deg) translateX(-7%); }
+.rider-layer.throw-right { transform: translateX(-50%) rotate(7deg) translateX(7%); }
+.rider-layer.fail { transform: translateX(-50%) rotate(9deg) translateY(4%); filter: sepia(1) saturate(8) hue-rotate(320deg); }
+.hud { position: absolute; z-index: 8; inset: 2.2% 4.5% auto; display: flex; justify-content: space-between; font-size: clamp(12px, 2.2vh, 22px); letter-spacing: .08em; font-weight: 800; }
+.hud span { padding: .45em .7em; background: #fff; border: 3px solid #171717; box-shadow: 4px 4px 0 #171717; }
+.brand { position: absolute; z-index: 6; top: 9%; width: 100%; text-align: center; font-size: clamp(11px, 1.8vh, 18px); letter-spacing: .26em; font-weight: 800; pointer-events: none; }
+.brand strong { color: #d9a800; }
+.delivery-toast { position: absolute; z-index: 11; left: 50%; top: 42%; color: #16843a; font-size: clamp(38px, 7vh, 76px); font-weight: 1000; opacity: 0; pointer-events: none; text-shadow: 2px 2px #fff; }
+.delivery-toast.show { animation: score-pop 650ms cubic-bezier(.23,1,.32,1) both; }
+@keyframes score-pop { 15% { opacity: 1; transform: translate(-50%, -12px) scale(1.08); } 80% { opacity: 1; transform: translate(-50%, -75px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -95px) scale(.96); } }
+.panel { position: absolute; z-index: 12; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; padding: 9%; background: #f7f5efd9; backdrop-filter: blur(4px); }
+.panel[hidden] { display: none; }
+.panel h1 { max-width: 8ch; margin: 0; font-size: clamp(48px, 8vh, 86px); line-height: .85; text-transform: uppercase; letter-spacing: -.06em; }
+.panel h2 { margin: .2em 0; font-size: clamp(30px, 5vh, 54px); text-transform: uppercase; }
+.panel p { font-size: clamp(18px, 2.6vh, 28px); line-height: 1.35; font-weight: 650; }
+button { appearance: none; border: 3px solid #171717; background: #ffd21c; color: #171717; padding: .8em 1.2em; font: inherit; font-weight: 900; letter-spacing: .06em; box-shadow: 5px 5px 0 #171717; cursor: pointer; }
+button:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 #171717; }
+.settings { position: absolute; z-index: 15; left: 3%; bottom: 2%; display: flex; gap: 8px; }
+.settings button { padding: .5em .65em; font-size: clamp(9px, 1.2vh, 13px); background: #fff; box-shadow: 3px 3px 0 #171717; }
+.gameover-panel { background: #f7f5eff0; }
+.gameover-panel small { color: #c82525; font-weight: 900; letter-spacing: .2em; }
+.is-failed { animation: fail-flash 180ms cubic-bezier(.23,1,.32,1) 2 alternate; }
+@keyframes fail-flash { to { box-shadow: inset 0 0 0 14px #d52b2b, 0 20px 80px #0009; } }
+@media (prefers-reduced-motion: reduce) { .rider-layer { transition: filter 180ms ease; } .rider-layer.throw-left, .rider-layer.throw-right, .rider-layer.fail { transform: translateX(-50%); } .is-failed { animation: none; box-shadow: inset 0 0 0 10px #d52b2b; } }

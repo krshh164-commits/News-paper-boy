@@ -48,6 +48,10 @@ describe("complete game flow", () => {
     expect(root.querySelector(".start-panel p")?.textContent?.toLowerCase()).not.toContain("green");
     window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "success", points: 10 } }));
     expect(root.querySelector("#delivery-toast")?.textContent).toBe("+10");
+    expect(root.querySelector("#delivery-toast")?.classList.contains("success")).toBe(true);
+    window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "miss" } }));
+    expect(root.querySelector("#delivery-toast")?.textContent).toBe("MISS");
+    expect(root.querySelector("#delivery-toast")?.classList.contains("miss")).toBe(true);
     window.dispatchEvent(new CustomEvent("paper-route-state", { detail: {
       state: "GAME_OVER", score: 10, best: 10, activeRequest: false, reason: "missed",
     } }));

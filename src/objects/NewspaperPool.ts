@@ -1,4 +1,11 @@
 import type { ThrowSide } from "../core/types";
+import type { DeliveryOutcome } from "../systems/DeliverySystem";
+
+export function paperFlightTarget(side: ThrowSide, door: { x: number; y: number }, outcome: DeliveryOutcome): { x: number; y: number } {
+  if (outcome === "success") return door;
+  return { x: side === "left" ? -110 : 830, y: 690 };
+}
+
 export class Newspaper {
   active = false;
   side: ThrowSide = "left";

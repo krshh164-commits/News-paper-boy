@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PerspectiveProjector } from "../systems/PerspectiveProjector";
 import { RoadSystem } from "../systems/RoadSystem";
-import { NewspaperPool } from "../objects/NewspaperPool";
+import { NewspaperPool, paperFlightTarget } from "../objects/NewspaperPool";
 
 describe("world systems", () => {
   it("projects distant objects near the horizon and near objects lower and larger", () => {
@@ -56,5 +56,12 @@ describe("world systems", () => {
     expect(paper.rotation).toBeLessThan(0);
     pool.update(240);
     expect(paper.active).toBe(false);
+  });
+
+  it("aims successful papers at the door and missed papers beyond the swiped side", () => {
+    const door = { x: 140, y: 520 };
+    expect(paperFlightTarget("left", door, "success")).toEqual(door);
+    expect(paperFlightTarget("left", door, "wrong-side")).toEqual({ x: -110, y: 690 });
+    expect(paperFlightTarget("right", door, "unnecessary")).toEqual({ x: 830, y: 690 });
   });
 });

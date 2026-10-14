@@ -88,7 +88,9 @@ export class HouseFacade {
     const stroke = Math.max(.7, plan.lineWeight * (.5 + scale * 1.2));
     const points = plan.body.map((point) => ({ x: anchor.x + point.x, y: anchor.y + point.y }));
 
-    graphics.fillStyle(0xfaf9f4, 1);
+    const pastelFacades = [0xf7dccf, 0xd8e8dc, 0xeadcf2, 0xf3e3ba, 0xd4e6f1, 0xeee0d3];
+    const templateIndex = Math.max(0, HOUSE_TEMPLATES.findIndex((item) => item.id === this.data.template));
+    graphics.fillStyle(pastelFacades[templateIndex % pastelFacades.length], distant ? .82 : 1);
     graphics.beginPath();
     graphics.moveTo(points[0].x, points[0].y);
     for (const point of points.slice(1)) graphics.lineTo(point.x, point.y);

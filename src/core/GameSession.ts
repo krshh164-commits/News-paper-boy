@@ -1,5 +1,5 @@
 import type { GamePhase, ThrowSide } from "./types";
-import { DeliverySystem, type DeliveryOutcome } from "../systems/DeliverySystem";
+import { DeliverySystem, type DeliveryEvent, type DeliveryOutcome } from "../systems/DeliverySystem";
 import { DELIVERY_PASS_DEPTH } from "../systems/DeliveryWindow";
 import { ScoreSystem } from "../systems/ScoreSystem";
 import { BestScoreStore } from "../utils/storage";
@@ -17,12 +17,10 @@ export class GameSession {
     this.elapsedMs += Math.max(0, deltaMs); this.scoreSystem.update(deltaMs);
   }
   schedule(side: ThrowSide, startDepth = 1, passDepth = DELIVERY_PASS_DEPTH): void { this.delivery.schedule(side, startDepth, passDepth); }
-  setTargetDepth(depth: number): void {
-    if (this.delivery.update(depth).includes("missed")) this.fail("missed");
-  }
+  setTargetDepth(depth: number): DeliveryEvent[] { return this.delivery.update(depth); }
   throw(side: ThrowSide): DeliveryOutcome {
     const outcome = this.delivery.throw(side);
-    if (outcome === "success") this.scoreSystem.addDelivery(); else this.fail(outcome);
+    if (outcome === "success") this.scoreSystem.addDelivery();
     return outcome;
   }
   fail(_reason: string): void {

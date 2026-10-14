@@ -21,10 +21,11 @@ export class GameUI {
   };
   private readonly onFeedback = (event: Event): void => {
     const detail = (event as CustomEvent).detail;
-    this.toast.textContent = `+${detail.points}`;
-    this.toast.classList.remove("show");
+    const success = detail.kind === "success";
+    this.toast.textContent = success ? `+${detail.points}` : "MISS";
+    this.toast.classList.remove("show", "success", "miss");
     void this.toast.offsetWidth;
-    this.toast.classList.add("show");
+    this.toast.classList.add("show", success ? "success" : "miss");
   };
   private readonly shell: HTMLElement;
   private readonly score: HTMLElement;
@@ -38,7 +39,7 @@ export class GameUI {
 
   constructor(root: HTMLElement, private readonly options: GameUIOptions) {
     this.settings = options.settings;
-    root.innerHTML = `<div class="game-shell"><div id="game-canvas" aria-label="Paper Route Rush game"></div><div class="hud"><span>SCORE <b id="score">0</b></span><span>BEST <b id="best">0</b></span></div><div class="brand">PAPER ROUTE <strong>RUSH</strong></div><div id="delivery-toast" class="delivery-toast" aria-live="polite"></div><div class="panel start-panel"><h1>Paper Route Rush</h1><p>Watch for a black paper popup<br>above a home’s door</p><button id="start">START RUN</button></div><div class="panel gameover-panel" hidden><small>ROUTE ENDED</small><h2 id="reason">Missed delivery</h2><p>Score <b id="final">0</b></p><button id="restart">RIDE AGAIN</button></div><div class="settings"><button id="sound" aria-label="Toggle sound">SOUND ON</button><button id="vibration" aria-label="Toggle vibration">VIBE ON</button></div></div>`;
+    root.innerHTML = `<div class="game-shell"><div id="game-canvas" aria-label="Paper Route Rush game"></div><div class="hud"><span>SCORE <b id="score">0</b></span><span>BEST <b id="best">0</b></span></div><div class="brand">PAPER ROUTE <strong>RUSH</strong></div><div id="delivery-toast" class="delivery-toast" aria-live="polite"></div><div class="panel start-panel"><h1>Paper Route Rush</h1><p>Swipe toward the yellow <b>paper</b> bubble<br>to deliver. Misses won’t end the ride.</p><button id="start">START RUN</button></div><div class="panel gameover-panel" hidden><small>ROUTE ENDED</small><h2 id="reason">Ride ended</h2><p>Score <b id="final">0</b></p><button id="restart">RIDE AGAIN</button></div><div class="settings"><button id="sound" aria-label="Toggle sound">SOUND ON</button><button id="vibration" aria-label="Toggle vibration">VIBE ON</button></div></div>`;
     this.shell = root.querySelector<HTMLElement>(".game-shell")!;
     this.score = root.querySelector<HTMLElement>("#score")!;
     this.best = root.querySelector<HTMLElement>("#best")!;

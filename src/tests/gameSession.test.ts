@@ -12,11 +12,34 @@ describe("delivery rules", () => {
     }
   });
 
-  it("fails a wrong-side throw", () => {
+  it("reports a wrong-side throw without ending the run", () => {
     const delivery = new DeliverySystem();
     delivery.schedule("left", 1);
     delivery.update(.5);
     expect(delivery.throw("right")).toBe("wrong-side");
+  });
+
+  it("keeps riding with no delivery bonus after a wrong-side throw", () => {
+    localStorage.clear();
+    const game = new GameSession(localStorage);
+    game.start();
+    game.schedule("left");
+    const scoreBeforeThrow = game.score;
+
+    expect(game.throw("right")).toBe("wrong-side");
+    expect(game.state).toBe("PLAYING");
+    expect(game.score).toBe(scoreBeforeThrow);
+    expect(game.delivery.active).toBe(false);
+  });
+
+  it("treats an expired request as a miss while the run continues", () => {
+    const game = new GameSession(localStorage);
+    game.start();
+    game.schedule("right", .5, .1);
+
+    expect(game.setTargetDepth(.1)).toEqual(["missed"]);
+    expect(game.state).toBe("PLAYING");
+    expect(game.delivery.active).toBe(false);
   });
 
   it("fails unnecessary throws and missed requests", () => {

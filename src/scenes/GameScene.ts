@@ -5,7 +5,7 @@ import { SwipeInput } from "../systems/SwipeInput";
 import { RoadSystem } from "../systems/RoadSystem";
 import { difficultyAt } from "../systems/DifficultySystem";
 import { createGameConfigBase } from "../config/phaserConfig";
-import { NewspaperPool } from "../objects/NewspaperPool";
+import { NewspaperPool, paperFlightTarget } from "../objects/NewspaperPool";
 import { HouseFacade, createHouseFacadePlan } from "../objects/HouseFacade";
 import type { HouseFacadeData, RoadsideSlot } from "../systems/RoadsideSystem";
 import { RoadsideSystem } from "../systems/RoadsideSystem";
@@ -46,7 +46,7 @@ export class GameScene extends Phaser.Scene {
     this.ink = this.add.graphics();
     this.requestBubble = this.add.graphics().setDepth(30).setVisible(false);
     this.requestBubbleText = this.add.text(0, 0, "paper", {
-      fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold", color: "#ffffff",
+      fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold", color: "#171717",
     }).setOrigin(.5).setDepth(31).setVisible(false);
     this.paperSprites = this.newspapers.items.map(() => this.add.rectangle(360, 910, 42, 28, 0xffffff).setStrokeStyle(4, 0x171717).setDepth(20).setVisible(false));
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -56,15 +56,22 @@ export class GameScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
       const side = this.swipe.end(p.id, p.x, p.y);
       if (!side || this.session.state !== "PLAYING") return;
+      const hadActiveRequest = this.session.delivery.active;
+      const doorTarget = this.targetScreenPosition(side);
       const outcome = this.session.throw(side);
-      this.deliverySegment = null;
-      this.deliveryCycle = null;
+      const flightTarget = paperFlightTarget(side, doorTarget, outcome);
+      this.newspapers.throw(side, flightTarget, { x: 360, y: 1040 });
+      window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: `throw-${side}` }));
       if (outcome === "success") {
-        this.throwPaper(side);
         window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "success", points: 10 } }));
+      } else {
+        window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "miss" } }));
       }
-      window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: outcome === "success" ? `throw-${side}` : "fail" }));
-      if (outcome === "success") this.requestDelay = difficultyAt(this.elapsed).requestGapMs;
+      if (hadActiveRequest) {
+        this.deliverySegment = null;
+        this.deliveryCycle = null;
+        this.requestDelay = difficultyAt(this.elapsed).requestGapMs;
+      }
       this.emitState(outcome);
     });
     this.emitState();
@@ -83,7 +90,13 @@ export class GameScene extends Phaser.Scene {
         this.deliverySegment = null;
         this.deliveryCycle = null;
       } else if (this.session.delivery.active && this.deliverySegment) {
-        this.session.setTargetDepth(this.deliverySegment.depth);
+        const events = this.session.setTargetDepth(this.deliverySegment.depth);
+        if (events.includes("missed")) {
+          this.deliverySegment = null;
+          this.deliveryCycle = null;
+          this.requestDelay = difficulty.requestGapMs;
+          window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "miss" } }));
+        }
       }
 
       if (this.session.snapshot().state === "GAME_OVER") {
@@ -118,7 +131,10 @@ export class GameScene extends Phaser.Scene {
   }
   private drawWorld(): void {
     const g = this.ink; g.clear();
-    g.fillStyle(0xf7f5ef, 1); g.fillRect(0, 0, 720, 1280);
+    g.fillStyle(0xcfe8f3, 1); g.fillRect(0, 0, 720, 600);
+    g.fillStyle(0xf7f1e5, 1); g.fillRect(0, 600, 720, 680);
+    g.fillStyle(0x78838d, 1).beginPath()
+      .moveTo(360, 600).lineTo(180, 1280).lineTo(540, 1280).closePath().fillPath();
     this.drawPerspectiveRoad(g);
     this.drawContinuousSidewalks(g);
 
@@ -283,11 +299,6 @@ export class GameScene extends Phaser.Scene {
     this.deliveryCycle = this.deliverySegment?.cycleCount ?? null;
   }
 
-  private throwPaper(side: "left" | "right"): void {
-    const { x, y } = this.targetScreenPosition(side);
-    const target = { x, y };
-    this.newspapers.throw(side, target, { x: 360, y: 910 });
-  }
   private targetScreenPosition(side: "left" | "right"): { x: number; y: number; scale: number } {
     const segment = this.deliverySegment;
     if (!segment) return { x: side === "left" ? 180 : 540, y: 500, scale: .2 };
@@ -340,11 +351,12 @@ export class GameScene extends Phaser.Scene {
     const doorTop = anchor.y + plan.door.y;
     const layout = requestBubbleLayout(side, doorX, doorTop, perspective);
     this.requestBubble.clear();
-    this.requestBubble.fillStyle(0x171717, 1).fillRoundedRect(-64, -26, 128, 52, 26);
+    this.requestBubble.lineStyle(3, 0x171717, 1);
+    this.requestBubble.fillStyle(0xffd95a, 1).fillRoundedRect(-64, -26, 128, 52, 26).strokeRoundedRect(-64, -26, 128, 52, 26);
     if (side === "left") {
-      this.requestBubble.fillTriangle(22, 14, 43, 14, 61, 38);
+      this.requestBubble.fillTriangle(22, 14, 43, 14, 61, 38).strokeTriangle(22, 14, 43, 14, 61, 38);
     } else {
-      this.requestBubble.fillTriangle(-22, 14, -43, 14, -61, 38);
+      this.requestBubble.fillTriangle(-22, 14, -43, 14, -61, 38).strokeTriangle(-22, 14, -43, 14, -61, 38);
     }
     this.requestBubble.setPosition(layout.x, layout.y).setScale(layout.scale).setVisible(true);
     this.requestBubbleText.setPosition(layout.x, layout.y - 1).setScale(layout.scale).setVisible(true);

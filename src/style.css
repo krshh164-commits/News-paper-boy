@@ -1,23 +1,27 @@
-:root { color: #171717; background: #181818; font-family: Inter, ui-rounded, system-ui, sans-serif; }
+:root { color: #171717; background: #1f2930; font-family: Inter, ui-rounded, system-ui, sans-serif; }
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
-body { touch-action: none; background: radial-gradient(circle at 50% 30%, #3a3a3a, #111); }
+body { touch-action: none; background: radial-gradient(circle at 50% 30%, #50616a, #182026); }
 #app { display: grid; place-items: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-.game-shell { position: relative; aspect-ratio: 9 / 16; width: min(100%, 56.25dvh); max-height: 100%; overflow: hidden; background: #f7f5ef; box-shadow: 0 20px 80px #0009; user-select: none; }
+.game-shell { position: relative; aspect-ratio: 9 / 16; width: min(100%, 56.25dvh); max-height: 100%; overflow: hidden; background: #f7f1e5; box-shadow: 0 20px 80px #0009; user-select: none; }
 #game-canvas, #game-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
 .rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 5%; width: 16.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
 .rider-svg { display: block; width: 100%; height: auto; transition: transform 180ms cubic-bezier(.23,1,.32,1), filter 180ms ease; transform-origin: 50% 80%; }
-.rider-layer.throw-left { transform: translateX(-50%) rotate(-7deg) translateX(-7%); }
-.rider-layer.throw-right { transform: translateX(-50%) rotate(7deg) translateX(7%); }
+.rider-layer.throw-left { animation: throw-left 260ms cubic-bezier(.2,.9,.25,1); }
+.rider-layer.throw-right { animation: throw-right 260ms cubic-bezier(.2,.9,.25,1); }
+@keyframes throw-left { 45% { transform: translateX(-54%) translateY(-4%) rotate(-13deg) scale(1.03); } }
+@keyframes throw-right { 45% { transform: translateX(-46%) translateY(-4%) rotate(13deg) scale(1.03); } }
 .rider-layer.fail { transform: translateX(-50%) rotate(9deg) translateY(4%); filter: sepia(1) saturate(8) hue-rotate(320deg); }
 .hud { position: absolute; z-index: 8; inset: 2.2% 4.5% auto; display: flex; justify-content: space-between; font-size: clamp(12px, 2.2vh, 22px); letter-spacing: .08em; font-weight: 800; }
 .hud span { padding: .45em .7em; background: #fff; border: 3px solid #171717; box-shadow: 4px 4px 0 #171717; }
 .brand { position: absolute; z-index: 6; top: 9%; width: 100%; text-align: center; font-size: clamp(11px, 1.8vh, 18px); letter-spacing: .26em; font-weight: 800; pointer-events: none; }
 .brand strong { color: #d9a800; }
-.delivery-toast { position: absolute; z-index: 11; left: 50%; top: 42%; color: #16843a; font-size: clamp(38px, 7vh, 76px); font-weight: 1000; opacity: 0; pointer-events: none; text-shadow: 2px 2px #fff; }
+.delivery-toast { position: absolute; z-index: 11; left: 50%; top: 42%; font-size: clamp(38px, 7vh, 76px); font-weight: 1000; opacity: 0; pointer-events: none; text-shadow: 2px 2px #fff; }
+.delivery-toast.success { color: #18834b; }
+.delivery-toast.miss { color: #b76d14; font-size: clamp(30px, 5vh, 56px); }
 .delivery-toast.show { animation: score-pop 650ms cubic-bezier(.23,1,.32,1) both; }
 @keyframes score-pop { 15% { opacity: 1; transform: translate(-50%, -12px) scale(1.08); } 80% { opacity: 1; transform: translate(-50%, -75px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -95px) scale(.96); } }
-.panel { position: absolute; z-index: 12; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; padding: 9%; background: #f7f5efd9; backdrop-filter: blur(4px); }
+.panel { position: absolute; z-index: 12; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; padding: 9%; background: #f7f1e5e8; backdrop-filter: blur(4px); }
 .panel[hidden] { display: none; }
 .panel h1 { max-width: 8ch; margin: 0; font-size: clamp(48px, 8vh, 86px); line-height: .85; text-transform: uppercase; letter-spacing: -.06em; }
 .panel h2 { margin: .2em 0; font-size: clamp(30px, 5vh, 54px); text-transform: uppercase; }

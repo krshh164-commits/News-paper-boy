@@ -28,8 +28,9 @@ describe("run rules", () => {
   });
 
   it("caps speed, request rate, and timing difficulty", () => {
-    expect(difficultyAt(0)).toEqual({ speed: 0.16, requestGapMs: 3200, windowDepth: 0.17 });
-    expect(difficultyAt(999_999)).toEqual({ speed: 0.32, requestGapMs: 1500, windowDepth: 0.1 });
+    expect(difficultyAt(0)).toEqual({ speed: 0.16, requestGapMs: 3200, windowDepth: 0.17, reactionSeconds: 2.35 });
+    expect(difficultyAt(45_000).reactionSeconds).toBe(1.95);
+    expect(difficultyAt(999_999)).toEqual({ speed: 0.32, requestGapMs: 1500, windowDepth: 0.1, reactionSeconds: 1.55 });
   });
 
   it("persists only valid best scores", () => {

@@ -3,7 +3,7 @@ import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
 import { INITIAL_SVG, MORPH_TARGETS } from "../artwork";
 
 gsap.registerPlugin(MorphSVGPlugin);
-export type RiderState = "ride" | "throw-left" | "throw-right" | "fail";
+export type RiderState = "ready" | "ride" | "throw-left" | "throw-right" | "fail";
 
 export function createMorphAnimation(svg: SVGSVGElement, reducedMotion: boolean): gsap.core.Timeline | null {
   if (reducedMotion) return null;
@@ -21,7 +21,7 @@ export class RiderView {
   private readonly layer: HTMLDivElement;
   private readonly svg: SVGSVGElement;
   private readonly timeline: gsap.core.Timeline | null;
-  private state: RiderState = "ride";
+  private state: RiderState = "ready";
   constructor(host: HTMLElement, reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches) {
     this.layer = document.createElement("div");
     this.layer.className = "rider-layer";
@@ -32,14 +32,15 @@ export class RiderView {
     this.svg.classList.add("rider-svg");
     this.svg.setAttribute("aria-hidden", "true");
     this.timeline = createMorphAnimation(this.svg, reducedMotion);
+    this.timeline?.pause(0);
   }
   setState(state: RiderState): void {
     this.state = state;
     this.layer.classList.remove("throw-left", "throw-right", "fail");
     if (state !== "ride") this.layer.classList.add(state);
-    if (state === "fail") this.timeline?.pause(); else this.timeline?.resume();
+    if (state === "fail" || state === "ready") this.timeline?.pause(); else this.timeline?.resume();
   }
-  reset(): void { this.setState("ride"); this.timeline?.restart(); }
+  reset(): void { this.timeline?.restart().pause(0); this.setState("ready"); }
   get currentState(): RiderState { return this.state; }
   destroy(): void { this.timeline?.kill(); this.layer.remove(); }
 }

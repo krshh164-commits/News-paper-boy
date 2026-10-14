@@ -6,8 +6,8 @@ export interface UpcomingHouse {
   hasDoor: boolean;
 }
 
-export function popupTriggerDepth(speed: number): number {
-  return DELIVERY_PASS_DEPTH + Math.max(0, speed) * POPUP_REACTION_SECONDS;
+export function popupTriggerDepth(speed: number, reactionSeconds = POPUP_REACTION_SECONDS): number {
+  return DELIVERY_PASS_DEPTH + Math.max(0, speed) * Math.max(0, reactionSeconds);
 }
 
 export function selectUpcomingHouse<T extends UpcomingHouse>(houses: readonly T[], triggerDepth: number): T | null {

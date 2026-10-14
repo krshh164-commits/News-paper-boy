@@ -29,5 +29,6 @@ describe("shared street projection", () => {
     expect(near.y).toBeLessThan(1120);
     expect(far.x).toBeLessThan(220);
     expect(near.x).toBeGreaterThan(500);
+    expect(requestBubbleLayout("left", 360, 90, .05).y).toBeGreaterThanOrEqual(116);
   });
 });

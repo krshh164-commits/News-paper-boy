@@ -17,7 +17,11 @@ export class GameSession {
     this.elapsedMs += Math.max(0, deltaMs); this.scoreSystem.update(deltaMs);
   }
   schedule(side: ThrowSide, startDepth = 1, passDepth = DELIVERY_PASS_DEPTH): void { this.delivery.schedule(side, startDepth, passDepth); }
-  setTargetDepth(depth: number): DeliveryEvent[] { return this.delivery.update(depth); }
+  setTargetDepth(depth: number): DeliveryEvent[] {
+    const events = this.delivery.update(depth);
+    if (events.includes("missed")) this.fail("missed");
+    return events;
+  }
   throw(side: ThrowSide): DeliveryOutcome {
     const outcome = this.delivery.throw(side);
     if (outcome === "success") this.scoreSystem.addDelivery();

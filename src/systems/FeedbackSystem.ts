@@ -1,4 +1,16 @@
 export interface FeedbackValue { sound: boolean; vibration: boolean }
+export type SoundCue = "start" | "throw" | "success" | "reward" | "wrong" | "missed" | "game-over" | "music";
+export interface SoundProfile { frequency: number; endFrequency: number; duration: number; wave: OscillatorType; volume: number }
+export const SOUND_PROFILES: Record<SoundCue, SoundProfile> = {
+  start: { frequency: 440, endFrequency: 660, duration: .12, wave: "sine", volume: .08 },
+  throw: { frequency: 310, endFrequency: 540, duration: .09, wave: "triangle", volume: .055 },
+  success: { frequency: 720, endFrequency: 980, duration: .11, wave: "sine", volume: .075 },
+  reward: { frequency: 880, endFrequency: 1320, duration: .16, wave: "square", volume: .055 },
+  wrong: { frequency: 230, endFrequency: 170, duration: .12, wave: "triangle", volume: .06 },
+  missed: { frequency: 180, endFrequency: 92, duration: .2, wave: "sawtooth", volume: .065 },
+  "game-over": { frequency: 150, endFrequency: 58, duration: .3, wave: "triangle", volume: .075 },
+  music: { frequency: 392, endFrequency: 440, duration: .08, wave: "sine", volume: .018 },
+};
 export class FeedbackSettings {
   private readonly key = "paper-route-settings";
   private current: FeedbackValue;
@@ -16,8 +28,8 @@ export class FeedbackSettings {
   setSound(sound: boolean): void { this.current.sound = sound; this.save(); }
   setVibration(vibration: boolean): void { this.current.vibration = vibration; this.save(); }
   get value(): FeedbackValue { return { ...this.current }; }
-  play(kind: "throw" | "success" | "fail"): void {
-    if (this.current.sound) window.dispatchEvent(new CustomEvent("paper-route-audio", { detail: { kind } }));
+  play(kind: SoundCue): void {
+    if (this.current.sound) window.dispatchEvent(new CustomEvent("paper-route-audio", { detail: { kind, profile: SOUND_PROFILES[kind] } }));
   }
   pulse(pattern: number | number[]): void {
     try { if (this.current.vibration && navigator.vibrate) navigator.vibrate(pattern); } catch { /* vibration is optional */ }

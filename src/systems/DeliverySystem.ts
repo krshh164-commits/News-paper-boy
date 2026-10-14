@@ -20,7 +20,7 @@ export class DeliverySystem {
   }
   throw(side: ThrowSide): DeliveryOutcome {
     if (!this.side) return "unnecessary";
-    if (side !== this.side) { this.side = null; return "wrong-side"; }
+    if (side !== this.side) return "wrong-side";
     this.side = null; return "success";
   }
   reset(): void { this.side = null; this.depth = 1; this.passDepth = DELIVERY_PASS_DEPTH; }

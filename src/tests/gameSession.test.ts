@@ -12,11 +12,13 @@ describe("delivery rules", () => {
     }
   });
 
-  it("reports a wrong-side throw without ending the run", () => {
+  it("keeps the request active after a wrong-side throw so the player can retry", () => {
     const delivery = new DeliverySystem();
     delivery.schedule("left", 1);
     delivery.update(.5);
     expect(delivery.throw("right")).toBe("wrong-side");
+    expect(delivery.active).toBe(true);
+    expect(delivery.throw("left")).toBe("success");
   });
 
   it("keeps riding with no delivery bonus after a wrong-side throw", () => {
@@ -29,16 +31,18 @@ describe("delivery rules", () => {
     expect(game.throw("right")).toBe("wrong-side");
     expect(game.state).toBe("PLAYING");
     expect(game.score).toBe(scoreBeforeThrow);
-    expect(game.delivery.active).toBe(false);
+    expect(game.delivery.active).toBe(true);
+    expect(game.throw("left")).toBe("success");
+    expect(game.score).toBe(scoreBeforeThrow + 10);
   });
 
-  it("treats an expired request as a miss while the run continues", () => {
+  it("ends the run only after an undelivered house passes the rider", () => {
     const game = new GameSession(localStorage);
     game.start();
     game.schedule("right", .5, .1);
 
     expect(game.setTargetDepth(.1)).toEqual(["missed"]);
-    expect(game.state).toBe("PLAYING");
+    expect(game.state).toBe("GAME_OVER");
     expect(game.delivery.active).toBe(false);
   });
 

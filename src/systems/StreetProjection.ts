@@ -36,7 +36,7 @@ export function requestBubbleLayout(side: StreetSide, doorX: number, doorTop: nu
   const halfWidth = BUBBLE_WIDTH * scale / 2;
   return {
     x: clamp(doorX + direction * halfWidth * .96, halfWidth + 5, viewportWidth - halfWidth - 5),
-    y: doorTop - 38 * scale,
+    y: clamp(doorTop - 38 * scale, 116, 1218),
     scale,
   };
 }

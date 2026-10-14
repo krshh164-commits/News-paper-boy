@@ -21,6 +21,18 @@ describe("complete game flow", () => {
     expect(new FeedbackSettings(localStorage).value).toEqual({ sound: false, vibration: false });
   });
 
+  it("emits a distinct enabled sound cue for each game event", () => {
+    localStorage.clear();
+    const settings = new FeedbackSettings(localStorage);
+    const heard: Array<{ kind: string; profile?: { frequency: number } }> = [];
+    const listener = (event: Event) => heard.push((event as CustomEvent).detail);
+    window.addEventListener("paper-route-audio", listener);
+    for (const kind of ["start", "throw", "success", "reward", "wrong", "missed", "game-over", "music"] as const) settings.play(kind);
+    window.removeEventListener("paper-route-audio", listener);
+    expect(heard.map(({ kind }) => kind)).toEqual(["start", "throw", "success", "reward", "wrong", "missed", "game-over", "music"]);
+    expect(new Set(heard.map(({ profile }) => profile?.frequency)).size).toBe(8);
+  });
+
   it("keeps gameplay usable when saved settings cannot be written", () => {
     const storage = {
       getItem: () => null,
@@ -39,11 +51,14 @@ describe("complete game flow", () => {
       onRestart: () => actions.restart++,
       settings: new FeedbackSettings(localStorage),
     });
-    root.querySelector<HTMLButtonElement>("#start")!.click();
+    expect(root.querySelector(".hindi-instruction")?.textContent).toContain("बाएँ या दाएँ");
+    expect(root.querySelector(".tap-instruction")?.textContent).toBe("शुरू करने के लिए टैप करें");
+    root.querySelector<HTMLElement>(".start-panel")!.click();
     expect(actions.start).toBe(1);
     window.dispatchEvent(new CustomEvent("paper-route-state", { detail: {
       state: "PLAYING", score: 10, best: 10, activeRequest: true, timing: "open", side: "left",
     } }));
+    expect(root.querySelector(".start-panel")?.classList.contains("is-running")).toBe(true);
     expect(root.querySelector("#delivery-cue")).toBeNull();
     expect(root.querySelector(".start-panel p")?.textContent?.toLowerCase()).not.toContain("green");
     window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "success", points: 10 } }));
@@ -57,7 +72,7 @@ describe("complete game flow", () => {
     } }));
     expect((root.querySelector(".gameover-panel") as HTMLElement).hidden).toBe(false);
     expect(root.querySelector("#reason")?.textContent).toBe("missed");
-    root.querySelector<HTMLButtonElement>("#restart")!.click();
+    root.querySelector<HTMLElement>(".gameover-panel")!.click();
     expect(actions.restart).toBe(1);
     ui.destroy();
   });

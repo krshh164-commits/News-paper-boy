@@ -40,12 +40,14 @@ export class GameScene extends Phaser.Scene {
   private requestDelay = 1000;
   private nextSide: "left" | "right" = "left";
   private failureReason = "";
+  private requestWasVisible = false;
+  private bubblePulseStartedAt = 0;
 
   constructor() { super("game"); }
   create(): void {
     this.ink = this.add.graphics();
     this.requestBubble = this.add.graphics().setDepth(30).setVisible(false);
-    this.requestBubbleText = this.add.text(0, 0, "paper", {
+    this.requestBubbleText = this.add.text(0, 0, "PAPER", {
       fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold", color: "#171717",
     }).setOrigin(.5).setDepth(31).setVisible(false);
     this.paperSprites = this.newspapers.items.map(() => this.add.rectangle(360, 910, 42, 28, 0xffffff).setStrokeStyle(4, 0x171717).setDepth(20).setVisible(false));
@@ -65,9 +67,9 @@ export class GameScene extends Phaser.Scene {
       if (outcome === "success") {
         window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "success", points: 10 } }));
       } else {
-        window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "miss" } }));
+        window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "wrong" } }));
       }
-      if (hadActiveRequest) {
+      if (hadActiveRequest && outcome === "success") {
         this.deliverySegment = null;
         this.deliveryCycle = null;
         this.requestDelay = difficultyAt(this.elapsed).requestGapMs;
@@ -86,7 +88,10 @@ export class GameScene extends Phaser.Scene {
       this.road.update(delta, difficulty.speed);
 
       if (this.deliverySegment && this.deliveryCycle !== this.deliverySegment.cycleCount) {
-        if (this.session.delivery.active) this.session.setTargetDepth(DELIVERY_PASS_DEPTH);
+        if (this.session.delivery.active) {
+          const events = this.session.setTargetDepth(DELIVERY_PASS_DEPTH);
+          if (events.includes("missed")) window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "missed" } }));
+        }
         this.deliverySegment = null;
         this.deliveryCycle = null;
       } else if (this.session.delivery.active && this.deliverySegment) {
@@ -95,7 +100,7 @@ export class GameScene extends Phaser.Scene {
           this.deliverySegment = null;
           this.deliveryCycle = null;
           this.requestDelay = difficulty.requestGapMs;
-          window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "miss" } }));
+          window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "missed" } }));
         }
       }
 
@@ -105,7 +110,7 @@ export class GameScene extends Phaser.Scene {
         this.failureReason = "missed";
         window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: "fail" }));
       } else if (!this.session.delivery.active && this.requestDelay <= 0) {
-        const triggerDepth = popupTriggerDepth(difficulty.speed);
+        const triggerDepth = popupTriggerDepth(difficulty.speed, difficulty.reactionSeconds);
         if (!this.deliverySegment) this.stageDeliveryHouse(this.nextSide, triggerDepth);
         if (this.deliverySegment && this.deliverySegment.depth <= triggerDepth) {
           this.session.schedule(this.nextSide, this.deliverySegment.depth, DELIVERY_PASS_DEPTH);
@@ -120,11 +125,20 @@ export class GameScene extends Phaser.Scene {
   restart(): void {
     this.tweens.killAll();
     this.session.restart(); this.road.reset(); this.roadside.reset(); this.newspapers.reset(); this.paperSprites.forEach((paper) => paper.setVisible(false));
-    this.deliverySegment = null; this.deliveryCycle = null;
+    this.deliverySegment = null; this.deliveryCycle = null; this.requestWasVisible = false;
     this.swipe.reset(); this.elapsed = 0; this.requestDelay = 900; this.nextSide = "left"; this.failureReason = "";
-    window.dispatchEvent(new CustomEvent("paper-route-rider-reset")); this.emitState();
+    window.dispatchEvent(new CustomEvent("paper-route-rider-reset"));
+    window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: "ride" }));
+    window.dispatchEvent(new CustomEvent("paper-route-run", { detail: "start" }));
+    this.emitState();
   }
-  startRun(): void { this.session.start(); this.emitState(); }
+  startRun(): void {
+    if (this.session.state !== "READY") return;
+    this.session.start();
+    window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: "ride" }));
+    window.dispatchEvent(new CustomEvent("paper-route-run", { detail: "start" }));
+    this.emitState();
+  }
   private emitState(reason?: string): void {
     if (reason && this.session.state === "GAME_OVER") this.failureReason = reason;
     window.dispatchEvent(new CustomEvent("paper-route-state", { detail: { ...this.session.snapshot(), best: this.session.bestScore, reason: this.failureReason } }));
@@ -322,12 +336,14 @@ export class GameScene extends Phaser.Scene {
     const side = this.session.delivery.active ? this.session.delivery.targetSide : null;
     const segment = this.deliverySegment;
     if (!side || !segment) {
+      this.requestWasVisible = false;
       this.requestBubble.setVisible(false);
       this.requestBubbleText.setVisible(false);
       return;
     }
     const slot = this.roadside.get(segment, side);
     if (slot.type !== "HOUSE") {
+      this.requestWasVisible = false;
       this.requestBubble.setVisible(false);
       this.requestBubbleText.setVisible(false);
       return;
@@ -342,6 +358,7 @@ export class GameScene extends Phaser.Scene {
     };
     const plan = createHouseFacadePlan(slot.house, side, facadeScale(perspective));
     if (!plan.door) {
+      this.requestWasVisible = false;
       this.requestBubble.setVisible(false);
       this.requestBubbleText.setVisible(false);
       return;
@@ -350,6 +367,12 @@ export class GameScene extends Phaser.Scene {
     const doorX = anchor.x + plan.door.x + plan.door.width / 2;
     const doorTop = anchor.y + plan.door.y;
     const layout = requestBubbleLayout(side, doorX, doorTop, perspective);
+    if (!this.requestWasVisible) {
+      this.requestWasVisible = true;
+      this.bubblePulseStartedAt = this.time.now;
+    }
+    const pulseAge = this.time.now - this.bubblePulseStartedAt;
+    const pulse = pulseAge < 520 ? 1 + Math.sin(pulseAge / 520 * Math.PI * 3) * .055 * (1 - pulseAge / 520) : 1;
     this.requestBubble.clear();
     this.requestBubble.lineStyle(3, 0x171717, 1);
     this.requestBubble.fillStyle(0xffd95a, 1).fillRoundedRect(-64, -26, 128, 52, 26).strokeRoundedRect(-64, -26, 128, 52, 26);
@@ -358,8 +381,8 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.requestBubble.fillTriangle(-22, 14, -43, 14, -61, 38).strokeTriangle(-22, 14, -43, 14, -61, 38);
     }
-    this.requestBubble.setPosition(layout.x, layout.y).setScale(layout.scale).setVisible(true);
-    this.requestBubbleText.setPosition(layout.x, layout.y - 1).setScale(layout.scale).setVisible(true);
+    this.requestBubble.setPosition(layout.x, layout.y).setScale(layout.scale * pulse).setVisible(true);
+    this.requestBubbleText.setPosition(layout.x, layout.y - 1).setScale(layout.scale * pulse).setVisible(true);
   }
 
   private syncPapers(): void {

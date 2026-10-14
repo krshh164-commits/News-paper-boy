@@ -10,6 +10,9 @@ describe("RiderView", () => {
     expect(svg?.getAttribute("viewBox")).toBe("0 0 82 175");
     expect(host.querySelector(".rider-layer")).not.toBeNull();
     expect((host.querySelector(".rider-layer") as HTMLElement).style.pointerEvents).toBe("none");
+    expect(rider.currentState).toBe("ready");
+    rider.setState("ride");
+    expect(rider.currentState).toBe("ride");
     rider.setState("throw-left");
     expect(host.querySelector(".rider-layer")?.classList.contains("throw-left")).toBe(true);
     rider.reset();

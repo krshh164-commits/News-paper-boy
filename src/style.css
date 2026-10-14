@@ -5,7 +5,7 @@ body { touch-action: none; background: radial-gradient(circle at 50% 30%, #50616
 #app { display: grid; place-items: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .game-shell { position: relative; aspect-ratio: 9 / 16; width: min(100%, 56.25dvh); max-height: 100%; overflow: hidden; background: #f7f1e5; box-shadow: 0 20px 80px #0009; user-select: none; }
 #game-canvas, #game-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
-.rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 22%; width: 14.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
+.rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 5%; width: 14.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
 .rider-svg { display: block; width: 100%; height: auto; transition: transform 180ms cubic-bezier(.23,1,.32,1), filter 180ms ease; transform-origin: 50% 80%; }
 .rider-layer.throw-left { animation: throw-left 260ms cubic-bezier(.2,.9,.25,1); }
 .rider-layer.throw-right { animation: throw-right 260ms cubic-bezier(.2,.9,.25,1); }

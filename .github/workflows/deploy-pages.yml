@@ -1,4 +1,4 @@
-name: Deploy Paper Route Rush to GitHub Pages
+name: Deploy NEWS PAPER BOY to GitHub Pages
 
 on:
   push:

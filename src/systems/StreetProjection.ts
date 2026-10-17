@@ -23,7 +23,7 @@ export function roadEdge(side: StreetSide, scale: number): number {
 
 export function facadeScale(scale: number): number {
   const depth = clamp(scale, 0, 1);
-  return depth * (1 + .32 * depth);
+  return depth * (1 + .62 * depth);
 }
 
 export function requestBubbleLayout(side: StreetSide, doorX: number, doorTop: number, perspective: number, viewportWidth = 720): {
@@ -32,7 +32,7 @@ export function requestBubbleLayout(side: StreetSide, doorX: number, doorTop: nu
   scale: number;
 } {
   const direction = side === "left" ? -1 : 1;
-  const scale = clamp(.82 + .18 * perspective, .82, 1);
+  const scale = clamp(.82 + .4 * perspective, .84, 1.22);
   const halfWidth = BUBBLE_WIDTH * scale / 2;
   return {
     x: clamp(doorX + direction * halfWidth * .96, halfWidth + 5, viewportWidth - halfWidth - 5),

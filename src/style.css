@@ -5,7 +5,7 @@ body { touch-action: none; background: radial-gradient(circle at 50% 30%, #50616
 #app { display: grid; place-items: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .game-shell { position: relative; aspect-ratio: 9 / 16; width: min(100%, 56.25dvh); max-height: 100%; overflow: hidden; background: #f7f1e5; box-shadow: 0 20px 80px #0009; user-select: none; }
 #game-canvas, #game-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
-.rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 5%; width: 14.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
+.rider-layer { position: absolute; z-index: 5; left: 50%; bottom: 8%; width: 14.5%; transform: translateX(-50%); filter: drop-shadow(0 10px 10px #0002); }
 .rider-svg { display: block; width: 100%; height: auto; transition: transform 180ms cubic-bezier(.23,1,.32,1), filter 180ms ease; transform-origin: 50% 80%; }
 .rider-layer.throw-left { animation: throw-left 260ms cubic-bezier(.2,.9,.25,1); }
 .rider-layer.throw-right { animation: throw-right 260ms cubic-bezier(.2,.9,.25,1); }
@@ -16,6 +16,14 @@ body { touch-action: none; background: radial-gradient(circle at 50% 30%, #50616
 .hud span { padding: .45em .7em; background: #fff; border: 3px solid #171717; box-shadow: 4px 4px 0 #171717; }
 .brand { position: absolute; z-index: 6; top: 9%; width: 100%; text-align: center; font-size: clamp(11px, 1.8vh, 18px); letter-spacing: .26em; font-weight: 800; pointer-events: none; }
 .brand strong { color: #d9a800; }
+.gameplay-tutorial { position: absolute; z-index: 10; top: 14%; left: 50%; width: min(88%, 620px); transform: translateX(-50%) scale(1); padding: .8em 1em .72em; border: 3px solid #171717; background: #fffdf5f2; box-shadow: 5px 5px 0 #171717; text-align: center; font-family: "Noto Sans Devanagari", "Nirmala UI", sans-serif; pointer-events: none; }
+.gameplay-tutorial[hidden] { display: none; }
+.gameplay-tutorial b, .gameplay-tutorial span { display: block; font-weight: 800; }
+.gameplay-tutorial b { font-size: clamp(15px, 2.25vh, 24px); }
+.gameplay-tutorial span { margin-top: .2em; font-size: clamp(13px, 1.9vh, 20px); }
+.gameplay-tutorial i { color: #d9a800; font-style: normal; }
+.gameplay-tutorial.is-complete { animation: tutorial-out 250ms cubic-bezier(.4,0,.8,.2) forwards; }
+@keyframes tutorial-out { to { opacity: 0; transform: translateX(-50%) scale(.92); } }
 .delivery-toast { position: absolute; z-index: 11; left: 50%; top: 42%; font-size: clamp(38px, 7vh, 76px); font-weight: 1000; opacity: 0; pointer-events: none; text-shadow: 2px 2px #fff; }
 .delivery-toast.success { color: #18834b; }
 .delivery-toast.miss { color: #b76d14; font-size: clamp(30px, 5vh, 56px); }
@@ -26,6 +34,7 @@ body { touch-action: none; background: radial-gradient(circle at 50% 30%, #50616
 .start-panel { transition: opacity 300ms ease, backdrop-filter 300ms ease; cursor: pointer; }
 .start-panel.is-running { opacity: 0; backdrop-filter: blur(0); pointer-events: none; }
 .panel h1 { max-width: 8ch; margin: 0; font-size: clamp(48px, 8vh, 86px); line-height: .85; text-transform: uppercase; letter-spacing: -.06em; }
+.panel h1 strong { color: #d9a800; }
 .panel h2 { margin: .2em 0; font-size: clamp(30px, 5vh, 54px); text-transform: uppercase; }
 .panel p { font-size: clamp(18px, 2.6vh, 28px); line-height: 1.35; font-weight: 650; }
 .hindi-instruction, .tap-instruction { font-family: "Noto Sans Devanagari", "Nirmala UI", sans-serif; }
@@ -35,8 +44,9 @@ button { appearance: none; border: 3px solid #171717; background: #ffd21c; color
 button:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 #171717; }
 .settings { position: absolute; z-index: 15; left: 3%; bottom: 2%; display: flex; gap: 8px; }
 .settings button { padding: .5em .65em; font-size: clamp(9px, 1.2vh, 13px); background: #fff; box-shadow: 3px 3px 0 #171717; }
+.settings #help { min-width: 2.6em; background: #ffd21c; }
 .gameover-panel { background: #f7f5eff0; }
 .gameover-panel small { color: #c82525; font-weight: 900; letter-spacing: .2em; }
 .is-failed { animation: fail-flash 180ms cubic-bezier(.23,1,.32,1) 2 alternate; }
 @keyframes fail-flash { to { box-shadow: inset 0 0 0 14px #d52b2b, 0 20px 80px #0009; } }
-@media (prefers-reduced-motion: reduce) { .rider-layer { transition: filter 180ms ease; } .rider-layer.throw-left, .rider-layer.throw-right, .rider-layer.fail { transform: translateX(-50%); } .is-failed { animation: none; box-shadow: inset 0 0 0 10px #d52b2b; } }
+@media (prefers-reduced-motion: reduce) { .rider-layer { transition: filter 180ms ease; } .rider-layer.throw-left, .rider-layer.throw-right, .rider-layer.fail { transform: translateX(-50%); } .is-failed { animation: none; box-shadow: inset 0 0 0 10px #d52b2b; } .gameplay-tutorial.is-complete { animation-duration: 1ms; } }

@@ -1,4 +1,4 @@
-# Paper Route Rush Implementation Plan
+# NEWS PAPER BOY Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Logical resolution is 720 × 1280 in portrait with responsive letterboxing and safe areas.
-- One request may be active; success is exactly +10; every invalid throw or miss ends the run.
+- One request may be active; success is exactly +10; invalid throws miss without points, while letting an active request pass ends the run.
 - Reuse the current 81-path Group 42 → Group 41 rider morph.
 - Pool gameplay objects; use no physics engine or active-play object churn.
 - Native packaging and deferred features remain out of scope.
@@ -58,7 +58,7 @@
 - Produces: `DeliverySystem.update(depth): DeliveryEvent[]`, `throw(side): DeliveryOutcome`, `schedule(side,startDepth): void`, `reset(): void`.
 - Produces: `GameSession.start()`, `update(deltaMs)`, `throw(side)`, `fail(reason)`, and `reset()` with `state: "READY" | "PLAYING" | "GAME_OVER"`.
 
-- [ ] Write tests for valid +10 delivery; wrong-side, early, late, unnecessary, and missed failures; single active target; fair rescheduling; and full reset with preserved best score.
+- [ ] Write tests for valid +10 delivery; nonfatal wrong-side and unnecessary throws; fatal passed requests; single active target; fair rescheduling; and full reset with preserved best score.
 - [ ] Run the focused test; expect missing-module failures.
 - [ ] Implement the minimal state machines and typed events, keeping rendering out.
 - [ ] Re-run the focused test; expect all cases to pass.

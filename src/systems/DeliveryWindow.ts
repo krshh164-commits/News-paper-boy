@@ -10,6 +10,10 @@ export function popupTriggerDepth(speed: number, reactionSeconds = POPUP_REACTIO
   return DELIVERY_PASS_DEPTH + Math.max(0, speed) * Math.max(0, reactionSeconds);
 }
 
+export function isRequestReady(houseDepth: number, triggerDepth: number): boolean {
+  return houseDepth <= triggerDepth;
+}
+
 export function selectUpcomingHouse<T extends UpcomingHouse>(houses: readonly T[], triggerDepth: number): T | null {
   return houses
     .filter((house) => house.hasDoor && house.depth > triggerDepth)

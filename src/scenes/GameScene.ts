@@ -3,14 +3,14 @@ import { GAME } from "../config/gameConfig";
 import { GameSession } from "../core/GameSession";
 import { SwipeInput } from "../systems/SwipeInput";
 import { RoadSystem } from "../systems/RoadSystem";
-import { difficultyAt } from "../systems/DifficultySystem";
+import { difficultyAt, requestSideFor } from "../systems/DifficultySystem";
 import { createGameConfigBase } from "../config/phaserConfig";
 import { NewspaperPool, paperFlightTarget } from "../objects/NewspaperPool";
-import { HouseFacade, createHouseFacadePlan } from "../objects/HouseFacade";
-import type { HouseFacadeData, RoadsideSlot } from "../systems/RoadsideSystem";
+import { HOUSE_ARTWORKS, createHouseArtworkPlan } from "../objects/HouseFacade";
+import type { RoadsideSlot } from "../systems/RoadsideSystem";
 import { RoadsideSystem } from "../systems/RoadsideSystem";
 import { facadeScale, roadEdge, requestBubbleLayout, streetGround, streetScale } from "../systems/StreetProjection";
-import { DELIVERY_PASS_DEPTH, popupTriggerDepth, selectUpcomingHouse } from "../systems/DeliveryWindow";
+import { DELIVERY_PASS_DEPTH, isRequestReady, popupTriggerDepth, selectUpcomingHouse } from "../systems/DeliveryWindow";
 import type { StreetSegment } from "../objects/StreetSegment";
 
 export function createGameConfig(parent: HTMLElement): Phaser.Types.Core.GameConfig {
@@ -32,20 +32,26 @@ export class GameScene extends Phaser.Scene {
   private readonly session = new GameSession(localStorage);
   private readonly swipe = new SwipeInput(GAME.swipeThreshold);
   private readonly newspapers = new NewspaperPool(4);
-  private readonly houseViews = new WeakMap<HouseFacadeData, HouseFacade>();
+  private houseSprites: Phaser.GameObjects.Image[] = [];
   private deliverySegment: StreetSegment | null = null;
   private deliveryCycle: number | null = null;
   private paperSprites: Phaser.GameObjects.Rectangle[] = [];
   private elapsed = 0;
-  private requestDelay = 1000;
+  private requestDelay = 700;
   private nextSide: "left" | "right" = "left";
+  private successfulDeliveries = 0;
   private failureReason = "";
   private requestWasVisible = false;
   private bubblePulseStartedAt = 0;
 
   constructor() { super("game"); }
+  preload(): void {
+    for (const artwork of HOUSE_ARTWORKS) this.load.image(artwork.textureKey, artwork.url);
+  }
   create(): void {
     this.ink = this.add.graphics();
+    this.houseSprites = Array.from({ length: this.road.sections.length * 2 }, () =>
+      this.add.image(0, 0, HOUSE_ARTWORKS[0].textureKey).setVisible(false));
     this.requestBubble = this.add.graphics().setDepth(30).setVisible(false);
     this.requestBubbleText = this.add.text(0, 0, "PAPER", {
       fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold", color: "#171717",
@@ -65,6 +71,7 @@ export class GameScene extends Phaser.Scene {
       this.newspapers.throw(side, flightTarget, { x: 360, y: 1040 });
       window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: `throw-${side}` }));
       if (outcome === "success") {
+        this.successfulDeliveries += 1;
         window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "success", points: 10 } }));
       } else {
         window.dispatchEvent(new CustomEvent("paper-route-feedback", { detail: { kind: "wrong" } }));
@@ -72,7 +79,7 @@ export class GameScene extends Phaser.Scene {
       if (hadActiveRequest && outcome === "success") {
         this.deliverySegment = null;
         this.deliveryCycle = null;
-        this.requestDelay = difficultyAt(this.elapsed).requestGapMs;
+        this.requestDelay = difficultyAt(this.elapsed, this.successfulDeliveries).requestGapMs;
       }
       this.emitState(outcome);
     });
@@ -81,7 +88,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.session.state === "PLAYING") {
       this.elapsed += delta;
-      const difficulty = difficultyAt(this.elapsed);
+      const difficulty = difficultyAt(this.elapsed, this.successfulDeliveries);
       this.session.update(delta);
       this.newspapers.update(delta);
       if (!this.session.delivery.active) this.requestDelay = Math.max(0, this.requestDelay - delta);
@@ -95,7 +102,7 @@ export class GameScene extends Phaser.Scene {
         this.deliverySegment = null;
         this.deliveryCycle = null;
       } else if (this.session.delivery.active && this.deliverySegment) {
-        const events = this.session.setTargetDepth(this.deliverySegment.depth);
+        const events = this.session.setTargetDepth(this.deliveryDepth(this.deliverySegment, this.session.delivery.targetSide!));
         if (events.includes("missed")) {
           this.deliverySegment = null;
           this.deliveryCycle = null;
@@ -112,9 +119,10 @@ export class GameScene extends Phaser.Scene {
       } else if (!this.session.delivery.active && this.requestDelay <= 0) {
         const triggerDepth = popupTriggerDepth(difficulty.speed, difficulty.reactionSeconds);
         if (!this.deliverySegment) this.stageDeliveryHouse(this.nextSide, triggerDepth);
-        if (this.deliverySegment && this.deliverySegment.depth <= triggerDepth) {
-          this.session.schedule(this.nextSide, this.deliverySegment.depth, DELIVERY_PASS_DEPTH);
-          this.nextSide = this.nextSide === "left" ? "right" : "left";
+        if (this.deliverySegment && isRequestReady(this.deliveryDepth(this.deliverySegment, this.nextSide), triggerDepth)) {
+          this.session.schedule(this.nextSide, this.deliveryDepth(this.deliverySegment, this.nextSide), DELIVERY_PASS_DEPTH);
+          window.dispatchEvent(new CustomEvent("news-paper-boy-request"));
+          this.nextSide = requestSideFor(this.successfulDeliveries + 1);
         }
       }
       this.emitState();
@@ -126,7 +134,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killAll();
     this.session.restart(); this.road.reset(); this.roadside.reset(); this.newspapers.reset(); this.paperSprites.forEach((paper) => paper.setVisible(false));
     this.deliverySegment = null; this.deliveryCycle = null; this.requestWasVisible = false;
-    this.swipe.reset(); this.elapsed = 0; this.requestDelay = 900; this.nextSide = "left"; this.failureReason = "";
+    this.swipe.reset(); this.elapsed = 0; this.requestDelay = 700; this.nextSide = requestSideFor(0); this.successfulDeliveries = 0; this.failureReason = "";
     window.dispatchEvent(new CustomEvent("paper-route-rider-reset"));
     window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: "ride" }));
     window.dispatchEvent(new CustomEvent("paper-route-run", { detail: "start" }));
@@ -145,24 +153,25 @@ export class GameScene extends Phaser.Scene {
   }
   private drawWorld(): void {
     const g = this.ink; g.clear();
-    g.fillStyle(0xcfe8f3, 1); g.fillRect(0, 0, 720, 600);
+    this.houseSprites.forEach((sprite) => sprite.setVisible(false));
+    g.fillStyle(0xf4f3ef, 1); g.fillRect(0, 0, 720, 600);
     g.fillStyle(0xf7f1e5, 1); g.fillRect(0, 600, 720, 680);
     g.fillStyle(0x78838d, 1).beginPath()
       .moveTo(360, 600).lineTo(180, 1280).lineTo(540, 1280).closePath().fillPath();
     this.drawPerspectiveRoad(g);
     this.drawContinuousSidewalks(g);
 
-    const ordered = [...this.road.sections].sort((a, b) => b.depth - a.depth);
+    const ordered = this.road.sections.flatMap((segment) => (["left", "right"] as const).map((side) => {
+      const slot = this.roadside.get(segment, side);
+      return { segment, side, slot, depth: this.deliveryDepth(segment, side) };
+    })).sort((a, b) => b.depth - a.depth);
     const poles = this.findPoles(ordered);
     this.drawUtilityWires(g, poles);
-    for (const section of ordered) {
-      const scale = streetScale(section.depth);
+    for (const item of ordered) {
+      const scale = streetScale(item.depth);
       const y = streetGround(scale);
-      for (const side of ["left", "right"] as const) {
-        const edge = roadEdge(side, scale);
-        const slot = this.roadside.get(section, side);
-        this.drawRoadsideSlot(g, slot, side, edge, y, scale);
-      }
+      const edge = roadEdge(item.side, scale);
+      this.drawRoadsideSlot(g, item.segment.index, item.slot, item.side, edge, y, scale);
     }
     this.syncRequestBubble();
   }
@@ -209,16 +218,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private findPoles(ordered: StreetSegment[]): Array<{ side: "left" | "right"; x: number; top: number; scale: number }> {
+  private findPoles(ordered: Array<{ side: "left" | "right"; slot: RoadsideSlot; depth: number }>): Array<{ side: "left" | "right"; x: number; top: number; scale: number }> {
     const result: Array<{ side: "left" | "right"; x: number; top: number; scale: number }> = [];
-    for (const segment of ordered) {
-      const scale = streetScale(segment.depth);
-      for (const side of ["left", "right"] as const) {
-        if (this.roadside.get(segment, side).type !== "POLE") continue;
-        const direction = side === "left" ? -1 : 1;
+    for (const item of ordered) {
+        if (item.slot.type !== "POLE") continue;
+        const scale = streetScale(item.depth);
+        const direction = item.side === "left" ? -1 : 1;
         const y = streetGround(scale);
-        result.push({ side, x: roadEdge(side, scale) + direction * 66 * scale, top: y - 190 * scale, scale });
-      }
+        result.push({ side: item.side, x: roadEdge(item.side, scale) + direction * 66 * scale, top: y - 190 * scale, scale });
     }
     return result;
   }
@@ -248,15 +255,23 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawRoadsideSlot(g: Phaser.GameObjects.Graphics, slot: RoadsideSlot, side: "left" | "right", edge: number, y: number, scale: number): void {
+  private drawRoadsideSlot(g: Phaser.GameObjects.Graphics, segmentIndex: number, slot: RoadsideSlot, side: "left" | "right", edge: number, y: number, scale: number): void {
     const direction = side === "left" ? -1 : 1;
     const anchor = edge + direction * (18 + slot.setback) * scale;
     const ink = scale < .28 ? 0x777777 : 0x171717;
     const line = Math.max(.7, slot.lineWeight * Math.sqrt(scale));
     if (slot.type === "HOUSE") {
-      let house = this.houseViews.get(slot.house);
-      if (!house) { house = new HouseFacade(slot.house); this.houseViews.set(slot.house, house); }
-      house.draw(g, { x: anchor, y }, facadeScale(scale), side);
+      const plan = createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, facadeScale(scale), slot.house.widthVariant);
+      const spriteIndex = segmentIndex * 2 + (side === "right" ? 1 : 0);
+      this.houseSprites[spriteIndex]
+        .setTexture(plan.textureKey)
+        .setPosition(anchor, y)
+        .setOrigin(plan.originX, plan.originY)
+        .setDisplaySize(plan.width, plan.height)
+        .setFlipX(plan.flipX)
+        .setAlpha(scale < .2 ? .72 : scale < .32 ? .86 : 1)
+        .setDepth(2 + scale * 12)
+        .setVisible(plan.width >= 3 && plan.height >= 3);
       return;
     }
     if (slot.type === "EMPTY_LOT") {
@@ -299,13 +314,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private stageDeliveryHouse(side: "left" | "right", triggerDepth: number): void {
-    const activationScale = facadeScale(streetScale(triggerDepth));
     const candidates = this.road.sections.map((segment) => {
       const slot = this.roadside.get(segment, side);
+      const depth = this.deliveryDepth(segment, side);
       return {
         segment,
-        depth: segment.depth,
-        hasDoor: slot.type === "HOUSE" && createHouseFacadePlan(slot.house, side, activationScale).door !== null,
+        depth,
+        hasDoor: slot.type === "HOUSE" && createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, facadeScale(streetScale(depth)), slot.house.widthVariant).door.width >= 6,
       };
     });
     const selected = selectUpcomingHouse(candidates, triggerDepth);
@@ -318,13 +333,12 @@ export class GameScene extends Phaser.Scene {
     if (!segment) return { x: side === "left" ? 180 : 540, y: 500, scale: .2 };
     const slot = this.roadside.get(segment, side);
     if (slot.type !== "HOUSE") return { x: side === "left" ? 180 : 540, y: 500, scale: .2 };
-    const scale = streetScale(segment.depth);
+    const scale = streetScale(this.deliveryDepth(segment, side));
     const edge = roadEdge(side, scale);
     const direction = side === "left" ? -1 : 1;
     const anchor = { x: edge + direction * (18 + slot.setback) * scale, y: streetGround(scale) };
-    const plan = createHouseFacadePlan(slot.house, side, facadeScale(scale));
+    const plan = createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, facadeScale(scale), slot.house.widthVariant);
     const door = plan.door;
-    if (!door) return { x: anchor.x, y: anchor.y - plan.height * .45, scale };
     return {
       x: anchor.x + door.x + door.width / 2,
       y: anchor.y + door.y + door.height / 2,
@@ -349,20 +363,14 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const perspective = streetScale(segment.depth);
+    const perspective = streetScale(this.deliveryDepth(segment, side));
     const edge = roadEdge(side, perspective);
     const direction = side === "left" ? -1 : 1;
     const anchor = {
       x: edge + direction * (18 + slot.setback) * perspective,
       y: streetGround(perspective),
     };
-    const plan = createHouseFacadePlan(slot.house, side, facadeScale(perspective));
-    if (!plan.door) {
-      this.requestWasVisible = false;
-      this.requestBubble.setVisible(false);
-      this.requestBubbleText.setVisible(false);
-      return;
-    }
+    const plan = createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, facadeScale(perspective), slot.house.widthVariant);
 
     const doorX = anchor.x + plan.door.x + plan.door.width / 2;
     const doorTop = anchor.y + plan.door.y;
@@ -391,5 +399,10 @@ export class GameScene extends Phaser.Scene {
       sprite.setVisible(model.active);
       if (model.active) sprite.setPosition(model.x, model.y).setRotation(model.rotation).setScale(1 - model.progress * .55);
     });
+  }
+
+  private deliveryDepth(segment: StreetSegment, side: "left" | "right"): number {
+    const slot = this.roadside.get(segment, side);
+    return Math.max(.001, Math.min(1, segment.depth + slot.depthOffset));
   }
 }

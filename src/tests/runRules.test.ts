@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SwipeInput } from "../systems/SwipeInput";
 import { ScoreSystem } from "../systems/ScoreSystem";
-import { difficultyAt } from "../systems/DifficultySystem";
+import { difficultyAt, requestSideFor } from "../systems/DifficultySystem";
 import { BestScoreStore } from "../utils/storage";
 
 describe("run rules", () => {
@@ -28,19 +28,37 @@ describe("run rules", () => {
   });
 
   it("caps speed, request rate, and timing difficulty", () => {
-    expect(difficultyAt(0)).toEqual({ speed: 0.16, requestGapMs: 3200, windowDepth: 0.17, reactionSeconds: 2.35 });
-    expect(difficultyAt(45_000).reactionSeconds).toBe(1.95);
-    expect(difficultyAt(999_999)).toEqual({ speed: 0.32, requestGapMs: 1500, windowDepth: 0.1, reactionSeconds: 1.55 });
+    expect(difficultyAt(0, 0)).toEqual({ speed: 0.14, requestGapMs: 3600, windowDepth: 0.18, reactionSeconds: 2.65 });
+    expect(difficultyAt(45_000, 3).reactionSeconds).toBeLessThan(2.2);
+    expect(difficultyAt(999_999, 999)).toEqual({ speed: 0.33, requestGapMs: 1450, windowDepth: 0.1, reactionSeconds: 1.5 });
+  });
+
+  it("guides the first request then varies sides without strict alternation", () => {
+    const sides = Array.from({ length: 8 }, (_, index) => requestSideFor(index));
+    expect(sides[0]).toBe("left");
+    expect(sides).toContain("right");
+    expect(sides.some((side, index) => index > 0 && side === sides[index - 1])).toBe(true);
   });
 
   it("persists only valid best scores", () => {
     localStorage.clear();
+    localStorage.setItem("paper-route-best", "19");
     const store = new BestScoreStore(localStorage);
-    expect(store.load()).toBe(0);
+    expect(store.load()).toBe(19);
+    expect(localStorage.getItem("news-paper-boy-best")).toBe("19");
     store.save(27);
     store.save(20);
     expect(store.load()).toBe(27);
-    localStorage.setItem("paper-route-best", "broken");
+    localStorage.setItem("news-paper-boy-best", "broken");
     expect(store.load()).toBe(0);
+  });
+
+  it("returns a legacy best score even when migration storage is read-only", () => {
+    const storage = {
+      getItem: (key: string) => key === "paper-route-best" ? "23" : null,
+      setItem: () => { throw new Error("read only"); },
+    } as unknown as Storage;
+    expect(() => new BestScoreStore(storage).load()).not.toThrow();
+    expect(new BestScoreStore(storage).load()).toBe(23);
   });
 });

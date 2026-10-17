@@ -1,5 +1,11 @@
 import type Phaser from "phaser";
-import { HOUSE_TEMPLATES, type HouseFacadeData, type HouseTemplate } from "../systems/RoadsideSystem";
+import courtyardUrl from "../../homes/h4.png?url";
+import hutUrl from "../../homes/h2-0.png?url";
+import kiranaUrl from "../../homes/h10.png?url";
+import modernUrl from "../../homes/Removed Background-0 (1).png?url";
+import paanUrl from "../../homes/Removed Background-0.png?url";
+import stallUrl from "../../homes/Removed Background-0 (2).png?url";
+import { HOUSE_TEMPLATES, type HouseArtworkId, type HouseFacadeData, type HouseTemplate } from "../systems/RoadsideSystem";
 
 export interface FacadeRect { x: number; y: number; width: number; height: number }
 export interface FacadePoint { x: number; y: number }
@@ -14,6 +20,67 @@ export interface HouseFacadePlan {
   lineWeight: number;
   windowVariant: number;
   balconyVariant: number;
+}
+
+export interface HouseArtworkDefinition {
+  id: HouseArtworkId;
+  textureKey: string;
+  url: string;
+  naturalWidth: number;
+  naturalHeight: number;
+  worldWidth: number;
+  baseY: number;
+  doorCenterX: number;
+  doorTop: number;
+  doorBottom: number;
+  doorWidth: number;
+}
+
+export interface HouseArtworkPlan {
+  textureKey: string;
+  url: string;
+  x: number;
+  width: number;
+  height: number;
+  originX: 0 | 1;
+  originY: number;
+  flipX: boolean;
+  door: FacadeRect;
+}
+
+export const HOUSE_ARTWORKS: readonly HouseArtworkDefinition[] = [
+  { id: "courtyard", textureKey: "house-courtyard", url: courtyardUrl, naturalWidth: 470, naturalHeight: 519, worldWidth: 184, baseY: .98, doorCenterX: .684, doorTop: .664, doorBottom: .893, doorWidth: .14 },
+  { id: "hut", textureKey: "house-hut", url: hutUrl, naturalWidth: 432, naturalHeight: 401, worldWidth: 178, baseY: .955, doorCenterX: .525, doorTop: .54, doorBottom: .94, doorWidth: .19 },
+  { id: "kirana", textureKey: "house-kirana", url: kiranaUrl, naturalWidth: 538, naturalHeight: 508, worldWidth: 188, baseY: .98, doorCenterX: .303, doorTop: .681, doorBottom: .976, doorWidth: .14 },
+  { id: "modern", textureKey: "house-modern", url: modernUrl, naturalWidth: 1024, naturalHeight: 1024, worldWidth: 198, baseY: .905, doorCenterX: .49, doorTop: .58, doorBottom: .77, doorWidth: .12 },
+  { id: "paan", textureKey: "house-paan", url: paanUrl, naturalWidth: 517, naturalHeight: 429, worldWidth: 186, baseY: .984, doorCenterX: .563, doorTop: .604, doorBottom: .876, doorWidth: .12 },
+  { id: "stall", textureKey: "house-stall", url: stallUrl, naturalWidth: 626, naturalHeight: 352, worldWidth: 180, baseY: .94, doorCenterX: .48, doorTop: .33, doorBottom: .85, doorWidth: .42 },
+];
+
+export function createHouseArtworkPlan(artwork: HouseArtworkId, side: "left" | "right", scale: number, widthVariant: number): HouseArtworkPlan {
+  const definition = HOUSE_ARTWORKS.find(({ id }) => id === artwork) ?? HOUSE_ARTWORKS[0];
+  const width = Math.max(0, (definition.worldWidth + widthVariant * 12) * scale);
+  const height = width * definition.naturalHeight / definition.naturalWidth;
+  const naturalDoorAtStreet = side === "left" ? definition.doorCenterX >= .5 : definition.doorCenterX <= .5;
+  const flipX = !naturalDoorAtStreet;
+  const doorCenter = flipX ? 1 - definition.doorCenterX : definition.doorCenterX;
+  const x = side === "left" ? -width : 0;
+  return {
+    textureKey: definition.textureKey,
+    url: definition.url,
+    x,
+    width,
+    height,
+    originX: side === "left" ? 1 : 0,
+    originY: definition.baseY,
+    flipX,
+    door: {
+      x: x + (doorCenter - definition.doorWidth / 2) * width,
+      y: (definition.doorTop - definition.baseY) * height,
+      width: definition.doorWidth * width,
+      height: (definition.doorBottom - definition.doorTop) * height,
+    },
+  };
 }
 
 export function createHouseFacadePlan(data: HouseFacadeData, side: "left" | "right", scale: number): HouseFacadePlan {
@@ -88,9 +155,9 @@ export class HouseFacade {
     const stroke = Math.max(.7, plan.lineWeight * (.5 + scale * 1.2));
     const points = plan.body.map((point) => ({ x: anchor.x + point.x, y: anchor.y + point.y }));
 
-    const pastelFacades = [0xf7dccf, 0xd8e8dc, 0xeadcf2, 0xf3e3ba, 0xd4e6f1, 0xeee0d3];
+    const facadeTones = [0xf8f7f2, 0xe8e9e6, 0xf2f0eb, 0xe1e3e1, 0xf5f4ef, 0xeaebe8];
     const templateIndex = Math.max(0, HOUSE_TEMPLATES.findIndex((item) => item.id === this.data.template));
-    graphics.fillStyle(pastelFacades[templateIndex % pastelFacades.length], distant ? .82 : 1);
+    graphics.fillStyle(facadeTones[templateIndex % facadeTones.length], distant ? .82 : 1);
     graphics.beginPath();
     graphics.moveTo(points[0].x, points[0].y);
     for (const point of points.slice(1)) graphics.lineTo(point.x, point.y);

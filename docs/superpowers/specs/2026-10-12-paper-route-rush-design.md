@@ -1,4 +1,4 @@
-# Paper Route Rush Browser Prototype
+# NEWS PAPER BOY Browser Prototype
 
 ## Goal
 
@@ -12,7 +12,7 @@ Replace the current standalone morph demo with a portrait, mobile-first endless 
 - Ready, Playing, and Game Over states.
 - Endless pseudo-3D street with pooled/recycled illustrated segments.
 - One left-or-right delivery request at a time.
-- Correct throw in the open window: +10. Wrong, early, late, unnecessary, or missed throw: game over.
+- Correct throw in the open window: +10. A wrong-side or unnecessary throw misses without points and the run continues; an undelivered active request that passes the rider ends the run.
 - Survival score, increasing capped difficulty, persistent best score, immediate restart.
 - Yellow requests, green success, red failure, optional vibration and audio hooks.
 

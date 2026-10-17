@@ -60,6 +60,7 @@ window.addEventListener("paper-route-feedback", ((event: CustomEvent) => {
   else if (event.detail.kind === "wrong") feedback.play("wrong");
   else if (event.detail.kind === "missed") feedback.play("missed");
 }) as EventListener);
+window.addEventListener("news-paper-boy-request", () => feedback.play("request"));
 window.addEventListener("paper-route-audio", ((event: CustomEvent<{ profile: SoundProfile }>) => playTone(event.detail.profile)) as EventListener);
 window.addEventListener("paper-route-run", ((event: CustomEvent<"start" | "stop">) => {
   if (event.detail === "start") { feedback.play("start"); startMusic(); } else stopMusic();

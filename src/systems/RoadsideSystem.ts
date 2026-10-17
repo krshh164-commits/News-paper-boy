@@ -1,6 +1,7 @@
 import type { StreetSegment } from "../objects/StreetSegment";
 
 export type RoadsideSlotType = "HOUSE" | "EMPTY_LOT" | "POLE" | "TREE" | "WALL" | "PARKED_VEHICLE";
+export type HouseArtworkId = "courtyard" | "hut" | "kirana" | "modern" | "paan" | "stall";
 export type HouseTemplateId =
   | "awning-cottage" | "narrow-townhouse" | "family-balcony" | "tank-parapet" | "garden-gable"
   | "garage-house" | "corner-home" | "old-pipe-house" | "modern-geometric" | "shop-house";
@@ -31,6 +32,7 @@ export const HOUSE_TEMPLATES: readonly HouseTemplate[] = [
 
 export interface HouseFacadeData {
   template: HouseTemplateId;
+  artwork?: HouseArtworkId;
   widthVariant: number;
   heightVariant: number;
   roofVariant: number;
@@ -45,32 +47,72 @@ export interface HouseFacadeData {
 }
 
 export type RoadsideSlot =
-  | { type: "HOUSE"; house: HouseFacadeData; setback: number; lineWeight: number }
-  | { type: Exclude<RoadsideSlotType, "HOUSE">; decorationVariant: number; setback: number; lineWeight: number };
+  | { type: "HOUSE"; house: HouseFacadeData; setback: number; lineWeight: number; depthOffset: number }
+  | { type: Exclude<RoadsideSlotType, "HOUSE">; decorationVariant: number; setback: number; lineWeight: number; depthOffset: number };
 
 interface Assignment { cycle: number; left: RoadsideSlot; right: RoadsideSlot }
 
-const SLOT_PATTERN: readonly RoadsideSlotType[] = ["HOUSE", "HOUSE", "EMPTY_LOT", "HOUSE", "POLE", "HOUSE", "POLE", "HOUSE", "EMPTY_LOT", "HOUSE"];
+const NON_HOUSE_VARIANTS: readonly Exclude<RoadsideSlotType, "HOUSE">[] = ["TREE", "WALL", "PARKED_VEHICLE"];
+export const HOUSE_ARTWORK_IDS: readonly HouseArtworkId[] = ["courtyard", "hut", "kirana", "modern", "paan", "stall"];
+const DOUBLE_HOUSE_INDICES = new Set([1, 6, 9]);
+const OPEN_BOTH_INDEX = 4;
 
-function makeSlot(segment: StreetSegment, sideIndex: number): RoadsideSlot {
-  const templateIndex = (segment.index + segment.cycleCount * 2 + sideIndex * 5) % HOUSE_TEMPLATES.length;
-  const baseType = SLOT_PATTERN[templateIndex];
-  const seed = (segment.index + 1) * 97 + (segment.cycleCount + 1) * 193 + sideIndex * 389;
+function mix(value: number): number {
+  let result = value | 0;
+  result = Math.imul(result ^ result >>> 16, 0x45d9f3b);
+  result = Math.imul(result ^ result >>> 16, 0x45d9f3b);
+  return (result ^ result >>> 16) >>> 0;
+}
+
+function rankedIndices(count: number, cycle: number, sideIndex: number): number[] {
+  return Array.from({ length: count }, (_, index) => index).sort((left, right) =>
+    mix((left + 1) * 977 + (cycle + 1) * 619 + sideIndex * 1543) -
+    mix((right + 1) * 977 + (cycle + 1) * 619 + sideIndex * 1543));
+}
+
+function isHouseSlotAt(index: number, cycleCount: number, sideIndex: number, segmentCount: number): boolean {
+  if (segmentCount !== 10) {
+    return rankedIndices(segmentCount, cycleCount, sideIndex)
+      .slice(0, Math.round(segmentCount * .6)).includes(index);
+  }
+  if (DOUBLE_HOUSE_INDICES.has(index)) return true;
+  if (index === OPEN_BOTH_INDEX) return false;
+  const singles = Array.from({ length: segmentCount }, (_, index) => index)
+    .filter((index) => !DOUBLE_HOUSE_INDICES.has(index) && index !== OPEN_BOTH_INDEX)
+    .sort((left, right) => mix((left + 1) * 977 + (cycleCount + 1) * 619) - mix((right + 1) * 977 + (cycleCount + 1) * 619));
+  const leftHouses = singles.slice(0, singles.length / 2);
+  return sideIndex === 0 ? leftHouses.includes(index) : !leftHouses.includes(index);
+}
+
+function makeSlot(segment: StreetSegment, sideIndex: number, segmentCount: number): RoadsideSlot {
+  const seed = mix((segment.index + 1) * 97 + (segment.cycleCount + 1) * 193 + sideIndex * 389);
   const setback = 8 + seed % 15;
   const lineWeight = 0.8 + (seed % 5) * 0.18;
-  if (baseType !== "HOUSE") {
-    const type = templateIndex === 6
-      ? segment.cycleCount === 0 ? "POLE" : (["POLE", "TREE", "WALL", "PARKED_VEHICLE"] as const)[(segment.index + segment.cycleCount) % 4]
-      : baseType;
-    return { type, decorationVariant: (segment.index + segment.cycleCount + sideIndex) % 4, setback, lineWeight };
+  const jitterStep = (segment.index * 5 + segment.cycleCount * 3 + sideIndex * 2) % 9 - 4;
+  const depthOffset = Number((jitterStep * .007).toFixed(3));
+  if (!isHouseSlotAt(segment.index, segment.cycleCount, sideIndex, segmentCount)) {
+    if (segmentCount === 10 && segment.index === OPEN_BOTH_INDEX) {
+      const type = sideIndex === 0 ? "EMPTY_LOT" : "WALL";
+      return { type, decorationVariant: seed % 4, setback, lineWeight, depthOffset };
+    }
+    const nonHouseSingles = Array.from({ length: segmentCount }, (_, index) => index)
+      .filter((index) => index !== OPEN_BOTH_INDEX)
+      .filter((index) => !isHouseSlotAt(index, segment.cycleCount, sideIndex, segmentCount));
+    const position = nonHouseSingles.indexOf(segment.index);
+    const type = position === 0 ? "EMPTY_LOT" : position === 1 ? "POLE"
+      : NON_HOUSE_VARIANTS[(segment.cycleCount * 2 + sideIndex + position) % NON_HOUSE_VARIANTS.length];
+    return { type, decorationVariant: seed % 4, setback, lineWeight, depthOffset };
   }
+  const templateIndex = (segment.index * 3 + segment.cycleCount * 7 + sideIndex * 5) % HOUSE_TEMPLATES.length;
   const definition = HOUSE_TEMPLATES[templateIndex];
   return {
     type: "HOUSE",
     setback,
     lineWeight,
+    depthOffset,
     house: {
       template: definition.id,
+      artwork: HOUSE_ARTWORK_IDS[templateIndex % HOUSE_ARTWORK_IDS.length],
       widthVariant: seed % 3 - 1,
       heightVariant: Math.floor(seed / 3) % 3 - 1,
       roofVariant: Math.floor(seed / 7) % 3,
@@ -92,12 +134,14 @@ export class RoadsideSystem {
   get(segment: StreetSegment, side: "left" | "right"): RoadsideSlot {
     let assigned = this.assignments.get(segment);
     if (!assigned || assigned.cycle !== segment.cycleCount) {
-      assigned = { cycle: segment.cycleCount, left: makeSlot(segment, 0), right: makeSlot(segment, 1) };
+      const left = makeSlot(segment, 0, this.segments.length);
+      const right = makeSlot(segment, 1, this.segments.length);
+      assigned = { cycle: segment.cycleCount, left, right };
       this.assignments.set(segment, assigned);
     }
     return assigned[side];
   }
   reset(): void {
-    for (const segment of this.segments) this.assignments.set(segment, { cycle: segment.cycleCount, left: makeSlot(segment, 0), right: makeSlot(segment, 1) });
+    for (const segment of this.segments) this.assignments.delete(segment);
   }
 }

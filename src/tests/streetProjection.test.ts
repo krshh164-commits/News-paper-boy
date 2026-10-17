@@ -15,9 +15,9 @@ describe("shared street projection", () => {
     expect(streetGround(0)).toBe(600);
     expect(streetGround(1)).toBe(1280);
     expect(streetScale(1)).toBeCloseTo(.05);
-    expect(facadeScale(.98)).toBeGreaterThan(1);
-    expect(facadeScale(.98) / .98).toBeGreaterThan(1.28);
-    expect(facadeScale(.2) / .2).toBeLessThan(1.1);
+    expect(facadeScale(.98)).toBeGreaterThan(1.5);
+    expect(facadeScale(.98) / .98).toBeGreaterThan(1.55);
+    expect(facadeScale(.2) / .2).toBeLessThan(1.13);
   });
 
   it("keeps request labels above their doors and legible at far depth", () => {
@@ -25,6 +25,7 @@ describe("shared street projection", () => {
     const near = requestBubbleLayout("right", 500, 1120, .98);
     expect(far.scale).toBeGreaterThanOrEqual(.82);
     expect(far.scale).toBeLessThan(near.scale);
+    expect(near.scale).toBeGreaterThan(1.15);
     expect(far.y).toBeLessThan(800);
     expect(near.y).toBeLessThan(1120);
     expect(far.x).toBeLessThan(220);

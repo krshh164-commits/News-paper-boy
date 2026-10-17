@@ -41,6 +41,16 @@ describe("world systems", () => {
     expect(section.cycleCount).toBe(1);
   });
 
+  it("moves by elapsed frame time rather than frame count", () => {
+    const singleFrame = new RoadSystem(1);
+    const splitFrames = new RoadSystem(1);
+
+    singleFrame.update(1_000, .2);
+    for (let frame = 0; frame < 10; frame++) splitFrames.update(100, .2);
+
+    expect(splitFrames.sections[0].depth).toBeCloseTo(singleFrame.sections[0].depth, 8);
+  });
+
   it("changes a street variant only when that section wraps", () => {
     const road = new RoadSystem(10);
     const far = road.sections[0];

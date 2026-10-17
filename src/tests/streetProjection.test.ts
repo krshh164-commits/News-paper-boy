@@ -31,6 +31,16 @@ describe("shared street projection", () => {
     expect(nearMovement).toBeGreaterThan(middleMovement * 2);
   });
 
+  it("accelerates continuously on every equal step toward the rider", () => {
+    const depths = [1, .9, .8, .7, .6, .5, .4, .3, .2, .1, 0];
+    const movements = depths.slice(1).map((depth, index) =>
+      streetGround(streetScale(depth)) - streetGround(streetScale(depths[index])));
+
+    for (let index = 1; index < movements.length; index++) {
+      expect(movements[index]).toBeGreaterThan(movements[index - 1]);
+    }
+  });
+
   it("sweeps buildings rapidly beyond the rider toward their screen edge", () => {
     const riderScale = streetScale(0);
     const passedScale = streetScale(-.1);

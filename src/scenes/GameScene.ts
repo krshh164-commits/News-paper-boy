@@ -160,6 +160,7 @@ export class GameScene extends Phaser.Scene {
       .moveTo(360, 600).lineTo(180, 1280).lineTo(540, 1280).closePath().fillPath();
     this.drawPerspectiveRoad(g);
     this.drawContinuousSidewalks(g);
+    this.drawMovingRoadDetails(g);
 
     const ordered = this.road.sections.flatMap((segment) => (["left", "right"] as const).map((side) => {
       const slot = this.roadside.get(segment, side);
@@ -190,12 +191,6 @@ export class GameScene extends Phaser.Scene {
           .lineTo(roadEdge(side, near), streetGround(near)).strokePath();
       }
     }
-    for (let index = 1; index <= steps; index++) {
-      const far = (index - 1) / steps;
-      const near = index / steps;
-      g.lineStyle(near < .4 ? 1.1 : 1.7, near < .4 ? 0x777777 : 0x555555, near < .4 ? .38 : .52)
-        .beginPath().moveTo(360, streetGround(far)).lineTo(360, streetGround(near)).strokePath();
-    }
   }
 
   private drawContinuousSidewalks(g: Phaser.GameObjects.Graphics): void {
@@ -215,6 +210,29 @@ export class GameScene extends Phaser.Scene {
           .moveTo(start.inner, start.y).lineTo(end.inner, end.y)
           .moveTo(start.outer, start.y).lineTo(end.outer, end.y).strokePath();
       }
+    }
+  }
+
+  private drawMovingRoadDetails(g: Phaser.GameObjects.Graphics): void {
+    const sections = [...this.road.sections].sort((a, b) => b.depth - a.depth);
+    for (const section of sections) {
+      const scale = streetScale(section.depth);
+      const y = streetGround(scale);
+      if (y < 598 || y > 1450) continue;
+      const weight = Math.max(.7, Math.min(5, 1.1 + scale * 1.8));
+      const ink = scale < .28 ? 0x888888 : 0x3d3d3d;
+      const alpha = scale < .28 ? .42 : .68;
+
+      for (const side of ["left", "right"] as const) {
+        const direction = side === "left" ? -1 : 1;
+        const inner = roadEdge(side, scale) + direction * (3 + 18 * scale);
+        const outer = roadEdge(side, scale) + direction * (22 + 42 * scale);
+        g.lineStyle(weight, ink, alpha).beginPath().moveTo(inner, y).lineTo(outer, y).strokePath();
+      }
+
+      const dashLength = Math.max(2, 34 * scale);
+      g.lineStyle(Math.max(.7, Math.min(4, scale * 2.2)), ink, alpha * .72)
+        .beginPath().moveTo(360, y - dashLength).lineTo(360, y).strokePath();
     }
   }
 
@@ -314,13 +332,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private stageDeliveryHouse(side: "left" | "right", triggerDepth: number): void {
+    const activationScale = facadeScale(streetScale(triggerDepth));
     const candidates = this.road.sections.map((segment) => {
       const slot = this.roadside.get(segment, side);
       const depth = this.deliveryDepth(segment, side);
       return {
         segment,
         depth,
-        hasDoor: slot.type === "HOUSE" && createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, facadeScale(streetScale(depth)), slot.house.widthVariant).door.width >= 6,
+        hasDoor: slot.type === "HOUSE" && createHouseArtworkPlan(slot.house.artwork ?? "courtyard", side, activationScale, slot.house.widthVariant).door.width >= 6,
       };
     });
     const selected = selectUpcomingHouse(candidates, triggerDepth);
@@ -403,6 +422,6 @@ export class GameScene extends Phaser.Scene {
 
   private deliveryDepth(segment: StreetSegment, side: "left" | "right"): number {
     const slot = this.roadside.get(segment, side);
-    return Math.max(.001, Math.min(1, segment.depth + slot.depthOffset));
+    return Math.min(1, segment.depth + slot.depthOffset);
   }
 }

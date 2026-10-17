@@ -21,9 +21,24 @@ describe("world systems", () => {
     road.update(10_000, 0.2);
     expect(road.sections).toHaveLength(10);
     expect(road.sections.every((s) => identities.includes(s))).toBe(true);
-    expect(road.sections.every((s) => s.depth > 0 && s.depth <= 1)).toBe(true);
+    expect(road.sections.every((s) => s.depth > -.18 && s.depth <= 1)).toBe(true);
     road.reset();
-    expect(road.sections.map((s) => s.depth)).toEqual([1, .9, .8, .7, .6, .5, .4, .3, .2, .1]);
+    expect(road.sections.map((s) => Number(s.depth.toFixed(3)))).toEqual([
+      1, .882, .764, .646, .528, .41, .292, .174, .056, -.062,
+    ]);
+  });
+
+  it("keeps a section alive past the rider and recycles only after its exit depth", () => {
+    const road = new RoadSystem(1);
+    const section = road.sections[0];
+
+    road.update(5_500, .2);
+    expect(section.depth).toBeCloseTo(-.1);
+    expect(section.cycleCount).toBe(0);
+
+    road.update(500, .2);
+    expect(section.depth).toBeCloseTo(.98);
+    expect(section.cycleCount).toBe(1);
   });
 
   it("changes a street variant only when that section wraps", () => {
@@ -33,7 +48,7 @@ describe("world systems", () => {
     road.update(100, 0.2);
     expect(far.variant).toBe(0);
     expect(near.variant).toBe(0);
-    road.update(500, 0.2);
+    road.update(700, 0.2);
     expect(far.variant).toBe(0);
     expect(near.variant).toBe(1);
   });

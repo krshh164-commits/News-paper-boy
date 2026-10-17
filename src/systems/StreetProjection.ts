@@ -5,24 +5,33 @@ const HORIZON_Y = 600;
 const ROAD_HALF_WIDTH = 180;
 const STREET_DEPTH_HEIGHT = 680;
 const BUBBLE_WIDTH = 128;
+const FAR_SCALE = .05;
+const NEAR_SCALE = .98;
+const PERSPECTIVE_EXPONENT = 2.15;
+const FOREGROUND_START = .72;
+const FOREGROUND_BOOST = 2.6;
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 export function streetScale(depth: number): number {
-  return clamp(1.05 - depth, .025, .98);
+  const forwardProgress = Math.max(0, 1 - depth);
+  const foregroundProgress = Math.max(0, forwardProgress - FOREGROUND_START);
+  return FAR_SCALE
+    + (NEAR_SCALE - FAR_SCALE) * Math.pow(forwardProgress, PERSPECTIVE_EXPONENT)
+    + FOREGROUND_BOOST * foregroundProgress * foregroundProgress;
 }
 
 export function streetGround(scale: number): number {
-  return HORIZON_Y + STREET_DEPTH_HEIGHT * clamp(scale, 0, 1);
+  return HORIZON_Y + STREET_DEPTH_HEIGHT * Math.max(0, scale);
 }
 
 export function roadEdge(side: StreetSide, scale: number): number {
   const direction = side === "left" ? -1 : 1;
-  return HORIZON_X + direction * ROAD_HALF_WIDTH * Math.pow(clamp(scale, 0, 1), 1.18);
+  return HORIZON_X + direction * ROAD_HALF_WIDTH * Math.pow(Math.max(0, scale), 1.18);
 }
 
 export function facadeScale(scale: number): number {
-  const depth = clamp(scale, 0, 1);
+  const depth = Math.max(0, scale);
   return depth * (1 + .62 * depth);
 }
 

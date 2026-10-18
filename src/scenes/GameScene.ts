@@ -68,7 +68,7 @@ export class GameScene extends Phaser.Scene {
       const doorTarget = this.targetScreenPosition(side);
       const outcome = this.session.throw(side);
       const flightTarget = paperFlightTarget(side, doorTarget, outcome);
-      this.newspapers.throw(side, flightTarget, { x: 360, y: 1040 });
+      this.newspapers.throw(side, flightTarget, { x: 360, y: 1040 }, outcome);
       window.dispatchEvent(new CustomEvent("paper-route-rider", { detail: `throw-${side}` }));
       if (outcome === "success") {
         this.successfulDeliveries += 1;
@@ -90,7 +90,9 @@ export class GameScene extends Phaser.Scene {
       this.elapsed += delta;
       const difficulty = difficultyAt(this.elapsed, this.successfulDeliveries);
       this.session.update(delta);
-      this.newspapers.update(delta);
+      const arrivedPapers = this.newspapers.update(delta);
+      if (arrivedPapers.includes("success")) window.dispatchEvent(new CustomEvent("paper-route-paper-arrived"));
+      window.dispatchEvent(new CustomEvent("paper-route-speed", { detail: difficulty.speed }));
       if (!this.session.delivery.active) this.requestDelay = Math.max(0, this.requestDelay - delta);
       this.road.update(delta, difficulty.speed);
 

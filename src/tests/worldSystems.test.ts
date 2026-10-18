@@ -83,6 +83,15 @@ describe("world systems", () => {
     expect(paper.active).toBe(false);
   });
 
+  it("reports a successful paper only when its flight reaches the door", () => {
+    const pool = new NewspaperPool(2);
+    pool.throw("left", { x: 140, y: 520 }, { x: 360, y: 910 }, "success");
+
+    expect(pool.update(479)).toEqual([]);
+    expect(pool.update(1)).toEqual(["success"]);
+    expect(pool.update(100)).toEqual([]);
+  });
+
   it("aims successful papers at the door and missed papers beyond the swiped side", () => {
     const door = { x: 140, y: 520 };
     expect(paperFlightTarget("left", door, "success")).toEqual(door);

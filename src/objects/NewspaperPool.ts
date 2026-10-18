@@ -15,20 +15,22 @@ export class Newspaper {
   y = 0;
   rotation = 0;
   start = { x: 360, y: 910 };
-  launch(side: ThrowSide, target: { x: number; y: number }, start = { x: 360, y: 910 }): void {
+  outcome: DeliveryOutcome = "unnecessary";
+  launch(side: ThrowSide, target: { x: number; y: number }, start = { x: 360, y: 910 }, outcome: DeliveryOutcome = "unnecessary"): void {
     this.active = true; this.side = side; this.target.x = target.x; this.target.y = target.y;
-    this.start.x = start.x; this.start.y = start.y; this.x = start.x; this.y = start.y; this.progress = 0; this.rotation = 0;
+    this.start.x = start.x; this.start.y = start.y; this.x = start.x; this.y = start.y; this.progress = 0; this.rotation = 0; this.outcome = outcome;
   }
   complete(): void { this.active = false; }
 }
 export class NewspaperPool {
   readonly items: Newspaper[];
   constructor(count = 4) { this.items = Array.from({ length: count }, () => new Newspaper()); }
-  throw(side: ThrowSide, target: { x: number; y: number }, start = { x: 360, y: 910 }): Newspaper {
+  throw(side: ThrowSide, target: { x: number; y: number }, start = { x: 360, y: 910 }, outcome: DeliveryOutcome = "unnecessary"): Newspaper {
     const item = this.items.find((candidate) => !candidate.active) ?? this.items[0];
-    item.launch(side, target, start); return item;
+    item.launch(side, target, start, outcome); return item;
   }
-  update(deltaMs: number): void {
+  update(deltaMs: number): DeliveryOutcome[] {
+    const completed: DeliveryOutcome[] = [];
     for (const item of this.items) {
       if (!item.active) continue;
       item.progress = Math.min(1, item.progress + Math.max(0, deltaMs) / 480);
@@ -39,8 +41,9 @@ export class NewspaperPool {
       item.x = inverse * inverse * item.start.x + 2 * inverse * t * controlX + t * t * item.target.x;
       item.y = inverse * inverse * item.start.y + 2 * inverse * t * controlY + t * t * item.target.y;
       item.rotation = (item.side === "left" ? -1 : 1) * Math.PI * 4 * t;
-      if (t >= 1) item.complete();
+      if (t >= 1) { completed.push(item.outcome); item.complete(); }
     }
+    return completed;
   }
   reset(): void { this.items.forEach((item) => item.complete()); }
   get activeCount(): number { return this.items.filter((item) => item.active).length; }

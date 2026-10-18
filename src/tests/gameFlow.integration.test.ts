@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FeedbackSettings } from "../systems/FeedbackSystem";
+import * as feedbackSystem from "../systems/FeedbackSystem";
 import { GameSession } from "../core/GameSession";
 import { GameUI } from "../ui/GameUI";
 
@@ -22,6 +23,77 @@ describe("complete game flow", () => {
     const settings = new FeedbackSettings(localStorage);
     settings.setSound(false); settings.setVibration(false);
     expect(new FeedbackSettings(localStorage).value).toEqual({ sound: false, vibration: false });
+  });
+
+  it("announces saved sound changes so active audio stops immediately", () => {
+    localStorage.clear();
+    const settings = new FeedbackSettings(localStorage);
+    const heard: boolean[] = [];
+    const listener = (event: Event) => heard.push((event as CustomEvent<boolean>).detail);
+    window.addEventListener("paper-route-sound-setting", listener);
+
+    settings.setSound(false);
+    settings.setSound(true);
+
+    window.removeEventListener("paper-route-sound-setting", listener);
+    expect(heard).toEqual([false, true]);
+    expect(new FeedbackSettings(localStorage).value.sound).toBe(true);
+  });
+
+  it("maps world speed to a smooth, increasing engine pitch", () => {
+    const pitchForSpeed = (feedbackSystem as unknown as {
+      enginePitchForSpeed?: (speed: number) => number;
+    }).enginePitchForSpeed;
+    expect(typeof pitchForSpeed).toBe("function");
+    if (!pitchForSpeed) return;
+
+    expect(pitchForSpeed(.14)).toBeCloseTo(62, 1);
+    expect(pitchForSpeed(.235)).toBeGreaterThan(62);
+    expect(pitchForSpeed(.235)).toBeLessThan(104);
+    expect(pitchForSpeed(.33)).toBeCloseTo(104, 1);
+    expect(pitchForSpeed(.236) - pitchForSpeed(.235)).toBeLessThan(1);
+  });
+
+  it("rate-limits repeated throw sounds without blocking later throws", () => {
+    const CueLimiter = (feedbackSystem as unknown as {
+      SoundCueLimiter?: new () => { allow(kind: string, nowMs: number): boolean };
+    }).SoundCueLimiter;
+    expect(typeof CueLimiter).toBe("function");
+    if (!CueLimiter) return;
+
+    const limiter = new CueLimiter();
+    expect(limiter.allow("throw", 1_000)).toBe(true);
+    expect(limiter.allow("throw", 1_040)).toBe(false);
+    expect(limiter.allow("throw", 1_100)).toBe(true);
+    expect(limiter.allow("wrong", 1_100)).toBe(true);
+  });
+
+  it("coordinates engine lifecycle, mute restoration, and isolated game-over audio", () => {
+    type AudioAction = { type: string; cue?: string; pitch?: number };
+    const Lifecycle = (feedbackSystem as unknown as {
+      AudioLifecycle?: new (enabled: boolean) => {
+        start(speed: number): AudioAction[];
+        updateSpeed(speed: number): AudioAction[];
+        setEnabled(enabled: boolean): AudioAction[];
+        cue(cue: "wrong"): AudioAction[];
+        gameOver(): AudioAction[];
+      };
+    }).AudioLifecycle;
+    expect(typeof Lifecycle).toBe("function");
+    if (!Lifecycle) return;
+
+    const audio = new Lifecycle(true);
+    expect(audio.start(.14)).toEqual([{ type: "engine-start", pitch: 62 }]);
+    expect(audio.updateSpeed(.33)).toEqual([{ type: "engine-pitch", pitch: 104 }]);
+    expect(audio.setEnabled(false)).toEqual([{ type: "engine-stop" }]);
+    expect(audio.setEnabled(true)).toEqual([{ type: "engine-start", pitch: 104 }]);
+    expect(audio.gameOver()).toEqual([
+      { type: "engine-stop" },
+      { type: "cue-stop", cue: "wrong" },
+      { type: "cue", cue: "game-over" },
+    ]);
+    expect(audio.gameOver()).toEqual([]);
+    expect(audio.cue("wrong")).toEqual([]);
   });
 
   it("emits a distinct enabled sound cue for each game event", () => {
